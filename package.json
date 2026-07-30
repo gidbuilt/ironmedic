@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy:supabase": "node scripts/deploy-supabase.mjs",
+    "deploy:supabase:backend": "node scripts/deploy-supabase.mjs --skip-website"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",

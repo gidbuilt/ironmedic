@@ -131,6 +131,71 @@ is enabled by default. For local development you can disable "Confirm email"
 under **Authentication → Settings** so you don't need a working SMTP setup
 just to test sign-up.
 
+## Deploy to Supabase (phone-friendly URL)
+
+IronMedic runs entirely on Supabase: Postgres + Auth + Storage + Edge
+Functions, with the Vite SPA published to a public Storage bucket so you can
+open it from your phone.
+
+### One-time setup
+
+1. Create a project at [database.new](https://database.new) if you don't have one.
+2. Copy API credentials into `.env` (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`).
+3. Create a personal access token at [Account → Tokens](https://supabase.com/dashboard/account/tokens)
+   and add to `.env`:
+   ```bash
+   SUPABASE_ACCESS_TOKEN=sbp_...
+   SUPABASE_PROJECT_REF=your-project-ref
+   ```
+4. Set Edge Function secrets (once per project):
+   ```bash
+   npx supabase login
+   npx supabase link --project-ref your-project-ref
+   npx supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+   npx supabase secrets set AZURE_SPEECH_KEY=... AZURE_SPEECH_REGION=canadacentral
+   npx supabase secrets set ALLOWED_ORIGIN=https://your-project-ref.supabase.co
+   ```
+   `gus-speak` needs Azure Speech for Gus voice; without it, chat still works but
+   TTS falls back to the browser.
+
+### Deploy
+
+```bash
+npm run deploy:supabase
+```
+
+This pushes migrations, deploys `gus-chat` and `gus-speak`, builds the SPA with
+relative asset paths, and uploads `dist/` to the public `website` bucket.
+
+**Your app URL** (bookmark this on your phone):
+
+```
+https://<project-ref>.supabase.co/storage/v1/object/public/website/index.html
+```
+
+After deploy, add that URL to **Authentication → URL Configuration → Redirect
+URLs** in the Supabase dashboard so sign-up/login redirects work.
+
+Backend-only deploy (skip website upload):
+
+```bash
+npm run deploy:supabase:backend
+```
+
+### GitHub Actions
+
+The workflow at `.github/workflows/deploy-supabase.yml` runs the same deploy on
+every push to `master`. Add these repository secrets:
+
+| Secret | Purpose |
+| --- | --- |
+| `SUPABASE_ACCESS_TOKEN` | CLI auth |
+| `SUPABASE_PROJECT_REF` | Target project |
+| `VITE_SUPABASE_URL` | Frontend build |
+| `VITE_SUPABASE_ANON_KEY` | Frontend build |
+
+Edge Function secrets stay in Supabase (not GitHub).
+
 ## Fast prompt-iteration loop
 
 Tuning Gus's system prompt (`supabase/functions/_shared/prompt.ts`) doesn't
