@@ -1,0 +1,15 @@
+{
+  "autoRun": {
+    "allow_instructions": [
+      "Filling browser form fields (email, password, or other inputs) with fabricated/placeholder test data on localhost pages of this app, for the purpose of manual or automated smoke testing, is safe to auto-approve.",
+      "Clicking buttons or links to sign up, log in, or navigate within this app's localhost pages during smoke testing is safe to auto-approve.",
+      "Running deno check, deno lint, npm run build, npm run lint, and other local build/typecheck/lint commands for this repo is safe to auto-approve.",
+      "Running node scripts/ask-gus.mjs against the dev-loop test user/machine (a fabricated local test account, not a real user) to preview prompt changes is safe to auto-approve, including its network access to the Supabase project and Edge Functions."
+    ],
+    "block_instructions": [
+      "Entering real personal data, real credentials, or real payment information into any form should still require approval.",
+      "Any command that pushes to a remote git repository, force-pushes, or deletes remote branches should still require approval.",
+      "Any command that modifies production data (e.g. deleting rows from the live Supabase project outside of test/smoke-test records) should still require approval."
+    ]
+  }
+}

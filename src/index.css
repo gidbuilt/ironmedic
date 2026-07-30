@@ -1,0 +1,172 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-display: "Bebas Neue", ui-sans-serif, sans-serif;
+
+  /* Charcoal / steel base — pushed toward the near-black of a dealer
+     service-console UI (Cat SIS's header/chrome) rather than a soft dark
+     theme. */
+  --color-steel-950: #08090b;
+  --color-steel-900: #131518;
+  --color-steel-800: #1c1f24;
+  --color-steel-700: #272b32;
+  --color-steel-600: #363b44;
+  --color-steel-500: #4a505c;
+  --color-steel-400: #6b7280;
+  --color-steel-300: #9aa1ac;
+  --color-steel-200: #c3c8d0;
+  --color-steel-100: #e6e8eb;
+  --color-steel-50: #f4f5f6;
+
+  /* Cat-yellow — the brand/CTA accent. Tuned toward Caterpillar's actual
+     Pantone 123 yellow rather than a generic safety yellow. Reserved for
+     CTAs, active states, and machine/equipment identity. */
+  --color-safety-600: #a67900;
+  --color-safety-500: #d9a300;
+  --color-safety-400: #ffc72c;
+  --color-safety-300: #ffdb70;
+
+  /* Tech-cyan — the AI/diagnostics accent, distinct from the equipment
+     brand color. Used for anything "Gus is actively reasoning" — streaming
+     indicators, scan lines, active-stage glow — never for static chrome. */
+  --color-tech-600: #0e7490;
+  --color-tech-500: #06b6d4;
+  --color-tech-400: #22d3ee;
+  --color-tech-300: #67e8f9;
+
+  /* Status colors */
+  --color-safe-500: #3fb27f;
+  --color-caution-500: #e2a63b;
+  --color-danger-500: #e0533d;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-steel-950 text-steel-100 font-sans antialiased;
+}
+
+::selection {
+  @apply bg-safety-400/30 text-steel-50;
+}
+
+/* Large, glove-friendly focus ring for outdoor/gloved use */
+:focus-visible {
+  outline: 2px solid var(--color-tech-400);
+  outline-offset: 2px;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  @apply bg-steel-600 rounded-full;
+}
+
+/* ---------------------------------------------------------------------
+   Design-system utilities — heavy-equipment dealer console (Cat SIS)
+   patterned chrome, combined with an AI-diagnostics visual language.
+   --------------------------------------------------------------------- */
+
+/* Soft brand gradient bar — a friendly accent line (yellow -> cyan) used
+   thin, never as a large field. Traded the old diagonal caution-stripe
+   motif for this: it kept reading as a warning label instead of a fun,
+   welcoming accent. */
+.hazard-stripe {
+  background-image: linear-gradient(90deg, var(--color-safety-400), var(--color-tech-400));
+}
+
+/* Faint schematic/circuit grid — a subtle "this is a technical instrument"
+   backdrop texture. Kept very low-contrast so it never competes with
+   content. */
+.tech-grid {
+  background-image:
+    linear-gradient(rgba(103, 232, 249, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(103, 232, 249, 0.05) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: -1px -1px;
+}
+
+/* Slow horizontal sweep used behind "Gus is actively reasoning" states. */
+@keyframes scan-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+.scan-sweep {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.scan-sweep::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.16), transparent);
+  animation: scan-sweep 2.2s linear infinite;
+}
+
+@keyframes status-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(34, 211, 238, 0);
+  }
+}
+.status-pulse {
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
+/* Gus stage — quiet tech void (grid + soft cyan wash) */
+@keyframes gus-grid-drift {
+  0% {
+    background-position: 0 0, 0 0, 50% 0;
+  }
+  100% {
+    background-position: 0 48px, 48px 0, 50% 0;
+  }
+}
+.gus-stage-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 75% at 50% 38%, rgba(255, 255, 255, 0.55) 0%, rgba(186, 230, 253, 0.45) 28%, rgba(125, 211, 252, 0.22) 52%, transparent 74%),
+    radial-gradient(ellipse 60% 45% at 50% 85%, rgba(224, 242, 254, 0.5) 0%, transparent 65%),
+    linear-gradient(180deg, #e8f4ff 0%, #cfe9fb 42%, #a8d4f0 100%);
+}
+.gus-stage-bg__grid {
+  position: absolute;
+  inset: -20% -10% 18%;
+  background-image:
+    linear-gradient(rgba(14, 116, 144, 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 116, 144, 0.14) 1px, transparent 1px),
+    linear-gradient(180deg, transparent 50%, rgba(186, 230, 253, 0.65) 100%);
+  background-size: 48px 48px, 48px 48px, 100% 100%;
+  transform: perspective(700px) rotateX(58deg) scale(1.35);
+  transform-origin: center bottom;
+  mask-image: linear-gradient(180deg, transparent 0%, #000 28%, #000 78%, transparent 100%);
+  animation: gus-grid-drift 36s linear infinite;
+}
+.gus-stage-bg__vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 75% at 50% 45%, transparent 50%, rgba(125, 211, 252, 0.18) 100%),
+    linear-gradient(90deg, rgba(186, 230, 253, 0.35) 0%, transparent 22%, transparent 78%, rgba(186, 230, 253, 0.35) 100%);
+}
