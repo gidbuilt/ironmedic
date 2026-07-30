@@ -3,7 +3,13 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
+// Relative base (`./`) when building for Supabase Storage hosting so asset
+// URLs resolve under .../object/public/website/index.html on any project ref.
+const deployTarget = process.env.VITE_DEPLOY_TARGET
+const base = deployTarget === 'supabase-storage' ? './' : '/'
+
 export default defineConfig({
+  base,
   plugins: [react(), tailwindcss()],
   optimizeDeps: {
     // Speech SDK ships as CJS/UMD; pre-bundle so Vite serves it cleanly.
