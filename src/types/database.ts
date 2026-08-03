@@ -218,6 +218,11 @@ export type Database = {
       } & NoRelationships
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      delete_own_account: {
+        Args: Record<string, never>
+        Returns: undefined
+      }
+    }
   }
 }

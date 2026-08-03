@@ -12,16 +12,9 @@ import { StageStepper } from './StageStepper'
 import { MessageBubble } from './MessageBubble'
 import { DiagnosisCard } from './DiagnosisCard'
 import { DifferentialPanel } from './DifferentialPanel'
-import { AvatarPanel } from './avatar/AvatarPanel'
 import { sanitizeAssistantDisplay } from '../lib/chatDisplay'
-import {
-  createGusSpeechStreamer,
-  ensureGusUnmuted,
-  stopGusSpeech,
-  subscribeGusSpeaking,
-  unlockGusAudio,
-  warmGusSpeak,
-} from '../lib/gusVoice'
+import { GUS_SHOP_CHAT_BG_URL } from '../lib/gusAssets'
+import { QUICK_CHAT_PLACEHOLDER_NAME } from './QuickChatBox'
 
 interface LocalMessage {
   id: string
@@ -39,9 +32,8 @@ export type GusChatPanelProps = {
   machineId: string
   /** Sent once after history loads (dashboard quick-ask / deep link). */
   initialMessage?: string | null
-  /** page = full repair route with side Gus; embedded = dock under shop hero */
+  /** page = full repair route; embedded = home session panel */
   variant?: 'page' | 'embedded'
-  onBusyChange?: (busy: boolean) => void
   onClose?: () => void
   onInitialMessageConsumed?: () => void
 }
@@ -50,7 +42,6 @@ export function GusChatPanel({
   machineId,
   initialMessage = null,
   variant = 'page',
-  onBusyChange,
   onClose,
   onInitialMessageConsumed,
 }: GusChatPanelProps) {
@@ -66,17 +57,9 @@ export function GusChatPanel({
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [copiedToast, setCopiedToast] = useState(false)
-  const [gusSpeakingAloud, setGusSpeakingAloud] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const prefillHandled = useRef(false)
-
-  useEffect(() => subscribeGusSpeaking(setGusSpeakingAloud), [])
-  useEffect(() => () => stopGusSpeech(), [])
-
-  useEffect(() => {
-    onBusyChange?.(sending || gusSpeakingAloud)
-  }, [sending, gusSpeakingAloud, onBusyChange])
 
   useEffect(() => {
     let cancelled = false
@@ -149,8 +132,15 @@ export function GusChatPanel({
 
   const machineLabel = useMemo(() => {
     if (!machine) return ''
-    if (!machine.make.trim() || !machine.model.trim()) return machine.name
-    const makeModel = `${machine.make} ${machine.model}`
+    // Placeholder / unnamed quick-chat sessions — don't show "New machine" in chrome.
+    if (
+      machine.name === QUICK_CHAT_PLACEHOLDER_NAME ||
+      (!machine.make.trim() && !machine.model.trim())
+    ) {
+      return ''
+    }
+    const makeModel = `${machine.make} ${machine.model}`.trim()
+    if (!makeModel) return machine.name
     if (machine.name === makeModel || machine.name === machine.model || machine.name === machine.make) {
       return makeModel
     }
@@ -159,51 +149,53 @@ export function GusChatPanel({
 
   async function handleSend(overrideText?: string) {
     const text = (overrideText ?? input).trim()
-    if (!text && photos.length === 0) return
-    if (!user) return
+    const attached = [...photos]
+    if (!text && attached.length === 0) return
+    if (!user) {
+      setError('Not signed in — reload the page to start a guest session.')
+      return
+    }
 
-    unlockGusAudio()
-    ensureGusUnmuted()
-    warmGusSpeak()
     setSending(true)
     setError(null)
-    setStatusText(null)
-    stopGusSpeech()
+    setStatusText(attached.length > 0 ? 'Uploading photo…' : null)
 
     try {
-      const photoPaths = await Promise.all(photos.map((file) => uploadPhoto(user.id, machineId, file)))
-      const localPhotoUrls = photos.map((f) => URL.createObjectURL(f))
+      const photoPaths =
+        attached.length > 0
+          ? await Promise.all(attached.map((file) => uploadPhoto(user.id, machineId, file)))
+          : []
+      const localPhotoUrls = attached.map((f) => URL.createObjectURL(f))
+      const messageText = text || "Here's a photo."
 
       const userMsg: LocalMessage = {
         id: `local-${Date.now()}`,
         role: 'user',
-        content: text || "Here's a photo.",
+        content: messageText,
         stage: null,
         photoUrls: localPhotoUrls,
       }
       setMessages((prev) => [...prev, userMsg])
       setInput('')
       setPhotos([])
+      setStatusText(null)
 
       const assistantId = `local-assistant-${Date.now()}`
       setMessages((prev) => [...prev, { id: assistantId, role: 'assistant', content: '', stage: null }])
 
-      let spokenText = ''
-      const speech = createGusSpeechStreamer()
-      speech.start()
+      let replyText = ''
 
       await streamChat({
         machineId,
-        message: text,
+        message: messageText,
         photoPaths,
         onEvent: (event) => {
           if (event.type === 'text') {
-            spokenText += event.text
-            const display = sanitizeAssistantDisplay(spokenText)
+            replyText += event.text
+            const display = sanitizeAssistantDisplay(replyText)
             setMessages((prev) =>
               prev.map((m) => (m.id === assistantId ? { ...m, content: display } : m)),
             )
-            speech.feed(spokenText)
           } else if (event.type === 'status') {
             setStatusText(
               event.status === 'searching_web'
@@ -220,15 +212,10 @@ export function GusChatPanel({
               prev.map((m) => (m.id === assistantId ? { ...m, stage: event.stage, diagnosis: event.diagnosis } : m)),
             )
             if (event.machine) setMachine(event.machine)
-            if (spokenText) {
-              const display = sanitizeAssistantDisplay(spokenText)
+            if (replyText) {
+              const display = sanitizeAssistantDisplay(replyText)
               setMessages((prev) =>
                 prev.map((m) => (m.id === assistantId ? { ...m, content: display } : m)),
-              )
-              speech.finish(display)
-            } else if (event.diagnosis) {
-              speech.finish(
-                `${event.diagnosis.summary}. ${event.diagnosis.ranked_causes?.[0]?.cause ?? ''}`,
               )
             }
           } else if (event.type === 'error') {
@@ -239,7 +226,7 @@ export function GusChatPanel({
     } catch (err) {
       const e = err as Error & { status?: number }
       if (e.status === 402) {
-        setError("You've used all your free diagnoses. Upgrade to keep working with Gus.")
+        setError("You've used all your free diagnoses. Upgrade to Pro to keep working with Gus.")
       } else {
         setError(e.message || 'Something went wrong talking to Gus.')
       }
@@ -249,7 +236,6 @@ export function GusChatPanel({
     }
   }
 
-  const gusSpeaking = sending || gusSpeakingAloud
   const embedded = variant === 'embedded'
 
   if (loading) {
@@ -276,15 +262,32 @@ export function GusChatPanel({
       )}
       {messages.map((m) => (
         <div key={m.id} className="flex flex-col gap-2">
-          <MessageBubble role={m.role} streaming={sending && m.content === '' && m.role === 'assistant'}>
-            {m.photoUrls && m.photoUrls.length > 0 && (
-              <div className="mb-2 flex gap-2">
-                {m.photoUrls.map((url, i) => (
-                  <img key={i} src={url} alt="Attached" className="h-24 w-24 rounded-2xl object-cover" />
-                ))}
-              </div>
+          <MessageBubble
+            role={m.role}
+            content={m.role === 'assistant' ? m.content : undefined}
+            streaming={sending && m.content === '' && m.role === 'assistant'}
+          >
+            {m.role === 'user' ? (
+              <>
+                {m.photoUrls && m.photoUrls.length > 0 && (
+                  <div className="mb-2 flex gap-2">
+                    {m.photoUrls.map((url, i) => (
+                      <img key={i} src={url} alt="Attached" className="h-24 w-24 rounded-2xl object-cover" />
+                    ))}
+                  </div>
+                )}
+                {m.content}
+              </>
+            ) : (
+              m.photoUrls &&
+              m.photoUrls.length > 0 && (
+                <div className="mb-2 flex gap-2">
+                  {m.photoUrls.map((url, i) => (
+                    <img key={i} src={url} alt="Attached" className="h-24 w-24 rounded-2xl object-cover" />
+                  ))}
+                </div>
+              )
             )}
-            {m.content}
           </MessageBubble>
           {m.diagnosis && (
             <DiagnosisCard
@@ -299,12 +302,21 @@ export function GusChatPanel({
         </div>
       ))}
       {statusText && <p className="text-sm italic text-steel-400">{statusText}</p>}
-      {error && <Card className="border-danger-500/40 p-3 text-sm text-danger-500">{error}</Card>}
+      {error && (
+        <Card className="border-danger-500/40 p-3 text-sm text-danger-500">
+          <p>{error}</p>
+          {error.toLowerCase().includes('free diagnoses') && (
+            <Link to="/pricing" className="mt-2 inline-block font-medium text-safety-400 hover:underline">
+              View Pro plans →
+            </Link>
+          )}
+        </Card>
+      )}
     </div>
   )
 
   const composer = (
-    <div className="shrink-0 border-t border-steel-800 bg-steel-950 pt-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+    <div className="shrink-0 border-t border-steel-800/80 bg-steel-950/90 pt-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-md">
       <div className="mb-2 flex flex-wrap gap-2">
         {QUICK_REPLIES.map((qr) => (
           <button
@@ -346,23 +358,31 @@ export function GusChatPanel({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,image/jpeg,image/png,image/webp,image/heic,image/heif"
           multiple
-          capture="environment"
           className="hidden"
-          onChange={(e) => setPhotos((prev) => [...prev, ...Array.from(e.target.files ?? [])])}
+          onChange={(e) => {
+            const files = Array.from(e.target.files ?? [])
+            if (files.length) setPhotos((prev) => [...prev, ...files])
+            // Allow picking the same file again on iOS.
+            e.target.value = ''
+          }}
         />
         <Button
           type="button"
           variant="secondary"
-          className="min-h-12 px-3"
+          className="!min-h-12 !w-12 !shrink-0 !gap-0 !p-1.5"
+          disabled={sending}
           onClick={() => fileInputRef.current?.click()}
           title="Attach a photo"
+          aria-label="Attach a photo"
         >
-          📷
-        </Button>
-        <Button type="button" variant="ghost" className="min-h-12 px-3" disabled title="Voice input coming soon">
-          🎙️
+          <svg viewBox="0 0 24 24" className="h-full w-full text-steel-50" fill="currentColor" aria-hidden>
+            <path
+              fillRule="evenodd"
+              d="M9.15 3.75c-.4 0-.78.19-1.02.51L7.1 5.6c-.24.32-.62.51-1.02.51H6A3 3 0 0 0 3 9.1v8.4a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3V9.1a3 3 0 0 0-3-3h-.08c-.4 0-.78-.19-1.02-.51l-1.03-1.34a1.28 1.28 0 0 0-1.02-.5H9.15Zm2.85 6.35a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8Zm-1.9 3.4a1.9 1.9 0 1 1 3.8 0 1.9 1.9 0 0 1-3.8 0Z"
+            />
+          </svg>
         </Button>
         <textarea
           value={input}
@@ -373,7 +393,7 @@ export function GusChatPanel({
               void handleSend()
             }
           }}
-          placeholder="Tell Gus what's going on…"
+          placeholder={photos.length > 0 ? 'Add a caption (optional)…' : "Tell Gus what's going on…"}
           rows={1}
           className="min-h-12 flex-1 resize-none rounded-xl border border-steel-600 bg-steel-800 px-4 py-3 text-base
             text-steel-50 placeholder:text-steel-400 outline-none focus:border-tech-400"
@@ -385,80 +405,81 @@ export function GusChatPanel({
     </div>
   )
 
-  if (embedded) {
-    return (
-      <div className="relative flex h-full min-h-0 flex-col bg-steel-950/95 backdrop-blur-md">
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-steel-800 px-3 py-2 sm:px-4">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-steel-100">{machineLabel || 'Gus'}</p>
-            {currentStage && (
-              <div className="mt-1">
-                <StageStepper activeStage={currentStage} />
-              </div>
-            )}
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
+  const chatShell = (opts: { embedded: boolean }) => (
+    <div
+      className={`relative flex min-h-0 flex-col overflow-hidden ${
+        opts.embedded ? 'h-full' : 'h-[calc(100dvh-5.5rem)]'
+      }`}
+    >
+      <div
+        className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${GUS_SHOP_CHAT_BG_URL})` }}
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-steel-950/55 via-steel-950/35 to-steel-950/75"
+        aria-hidden
+      />
+
+      <div
+        className={`relative z-[1] flex shrink-0 items-center justify-between gap-2 border-b border-steel-800/70 bg-steel-950/75 px-3 py-2 backdrop-blur-md sm:px-4 ${
+          opts.embedded ? '' : 'rounded-t-xl'
+        }`}
+      >
+        {opts.embedded ? (
+          <>
+            <div className="min-w-0 flex-1">
+              {machineLabel ? (
+                <p className="truncate text-sm font-medium text-steel-100">{machineLabel}</p>
+              ) : null}
+              {currentStage && (
+                <div className={machineLabel ? 'mt-1' : ''}>
+                  <StageStepper activeStage={currentStage} />
+                </div>
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Link to={`/machines/${machineId}/log`} className="text-xs text-steel-300 hover:text-steel-100">
+                Log
+              </Link>
+              {onClose && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-lg px-2 py-1 text-xs text-steel-300 hover:bg-steel-800/80 hover:text-steel-100"
+                >
+                  Minimize
+                </button>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            {currentStage ? <StageStepper activeStage={currentStage} /> : <span />}
             <Link
               to={`/machines/${machineId}/log`}
-              className="text-xs text-steel-400 hover:text-steel-200"
+              className="shrink-0 text-sm text-steel-300 hover:text-steel-100"
             >
-              Log
+              Service Log
             </Link>
-            {onClose && (
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-lg px-2 py-1 text-xs text-steel-400 hover:bg-steel-800 hover:text-steel-100"
-              >
-                Minimize
-              </button>
-            )}
-          </div>
-        </div>
-        <div className="flex min-h-0 flex-1 flex-col px-3 pt-2 sm:px-4">{messageList}</div>
-        <div className="px-3 sm:px-4">{composer}</div>
-        {copiedToast && (
-          <div className="pointer-events-none absolute bottom-28 left-1/2 z-20 -translate-x-1/2 rounded-xl border border-tech-400/40 bg-steel-800 px-4 py-2 text-sm text-steel-100 shadow-lg">
-            Report copied to clipboard
-          </div>
+          </>
         )}
       </div>
-    )
-  }
 
-  return (
-    <div className="mx-auto flex h-[calc(100dvh-5.5rem)] max-w-5xl flex-col">
-      <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
-        <Link to={`/machines/${machineId}`} className="truncate text-sm text-steel-400 hover:text-steel-200">
-          &larr; {machineLabel}
-        </Link>
-        <Link to={`/machines/${machineId}/log`} className="shrink-0 text-sm text-steel-400 hover:text-steel-200">
-          Service Log
-        </Link>
-      </div>
-
-      <div className="flex min-h-0 flex-1 flex-col gap-3 sm:flex-row">
-        <div className="mx-auto w-full max-w-[11rem] shrink-0 sm:mx-0 sm:w-44 md:w-52">
-          <AvatarPanel speaking={gusSpeaking} size="side" />
-        </div>
-
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          {currentStage && (
-            <div className="mb-2 shrink-0">
-              <StageStepper activeStage={currentStage} />
-            </div>
-          )}
-          {messageList}
-        </div>
-      </div>
-
-      {composer}
+      <div className="relative z-[1] flex min-h-0 flex-1 flex-col px-3 pt-2 sm:px-4">{messageList}</div>
+      <div className="relative z-[1] px-3 sm:px-4">{composer}</div>
 
       {copiedToast && (
-        <div className="fixed bottom-24 left-1/2 z-20 -translate-x-1/2 rounded-xl border border-tech-400/40 bg-steel-800 px-4 py-2 text-sm text-steel-100 shadow-lg">
+        <div className="pointer-events-none absolute bottom-28 left-1/2 z-20 -translate-x-1/2 rounded-xl border border-tech-400/40 bg-steel-800 px-4 py-2 text-sm text-steel-100 shadow-lg">
           Report copied to clipboard
         </div>
       )}
     </div>
   )
+
+  if (embedded) {
+    return chatShell({ embedded: true })
+  }
+
+  return <div className="mx-auto w-full max-w-3xl">{chatShell({ embedded: false })}</div>
 }

@@ -15,9 +15,8 @@ type QuickChatBoxProps = {
 }
 
 /**
- * Bottom-docked composer on the dashboard. Creates a placeholder machine and
- * opens the conversation — either via `onSessionStart` (stay on shop) or a
- * caller-provided navigation fallback.
+ * Home composer. Creates a placeholder machine and opens the conversation
+ * via `onSessionStart`.
  */
 export function QuickChatBox({ onSessionStart }: QuickChatBoxProps) {
   const { user } = useAuth()

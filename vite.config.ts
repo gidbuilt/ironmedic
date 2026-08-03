@@ -4,11 +4,9 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Relative asset paths so Capacitor iOS/Android can load JS/CSS from the bundle.
+  base: './',
   plugins: [react(), tailwindcss()],
-  optimizeDeps: {
-    // Speech SDK ships as CJS/UMD; pre-bundle so Vite serves it cleanly.
-    include: ['microsoft-cognitiveservices-speech-sdk'],
-  },
   server: {
     host: true, // expose on LAN so you can open from a phone on the same Wi‑Fi
     watch: {

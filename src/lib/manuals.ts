@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { randomId } from './id'
 import type { Manual, ManualExtractionStatus } from '../types/database'
 
 const MIN_CHARS_FOR_REAL_TEXT_LAYER = 200
@@ -48,7 +49,7 @@ export async function extractPdfText(file: File): Promise<{ text: string; status
 export async function uploadManual(userId: string, machineId: string, file: File): Promise<Manual> {
   const { text, status } = await extractPdfText(file)
 
-  const path = `${userId}/${machineId}/${Date.now()}-${crypto.randomUUID()}.pdf`
+  const path = `${userId}/${machineId}/${Date.now()}-${randomId()}.pdf`
   const { error: uploadError } = await supabase.storage.from('manuals').upload(path, file, {
     contentType: 'application/pdf',
     upsert: false,

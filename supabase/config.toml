@@ -1,0 +1,6 @@
+# Minimal project config for Edge Function deploy settings.
+# Stripe cannot send a Supabase JWT, so the webhook must skip gateway auth.
+# Signature verification still happens inside the function via STRIPE_WEBHOOK_SECRET.
+
+[functions.stripe-webhook]
+verify_jwt = false

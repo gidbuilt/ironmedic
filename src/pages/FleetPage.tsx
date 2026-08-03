@@ -1,11 +1,32 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { listMachines } from '../lib/machines'
+import { deleteMachine, listMachines } from '../lib/machines'
 import type { Machine } from '../types/database'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 
-function MachineNameplate({ machine }: { machine: Machine }) {
+function TrashIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7h12ZM10 11v6M14 11v6"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function MachineNameplate({
+  machine,
+  onDeleted,
+}: {
+  machine: Machine
+  onDeleted: (id: string) => void
+}) {
+  const [deleting, setDeleting] = useState(false)
   const isUnidentified = !machine.make.trim() || !machine.model.trim()
   const makeModel = `${machine.make} ${machine.model}`
   const hasCustomName =
@@ -15,27 +36,66 @@ function MachineNameplate({ machine }: { machine: Machine }) {
     machine.name !== machine.model &&
     machine.name !== machine.make
 
+  async function handleDelete(e: MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    const label = isUnidentified ? machine.name : makeModel.trim() || machine.name
+    if (!confirm(`Delete ${label}? This can’t be undone.`)) return
+    setDeleting(true)
+    try {
+      await deleteMachine(machine.id)
+      onDeleted(machine.id)
+    } catch {
+      setDeleting(false)
+      alert('Could not delete that machine. Try again.')
+    }
+  }
+
   return (
-    <Card className="group h-full overflow-hidden p-0 transition-colors hover:border-tech-400/50">
+    <Card className="h-full overflow-hidden p-0">
       <div className="flex h-full items-stretch">
-        <div
-          className={`w-1.5 shrink-0 transition-colors group-hover:bg-tech-400 ${isUnidentified ? 'bg-tech-400/50' : 'bg-safety-400'}`}
-        />
-        <div className="flex flex-1 flex-col justify-between gap-2 px-3 py-3">
-          <div className="min-w-0">
-            {isUnidentified ? (
-              <>
-                <p className="truncate text-[10px] font-medium tracking-wide text-tech-400 uppercase">Identifying…</p>
-                <p className="truncate text-sm font-semibold text-steel-50">{machine.name}</p>
-              </>
-            ) : (
-              <>
-                <p className="truncate text-[10px] font-medium tracking-wide text-steel-500 uppercase">{machine.make}</p>
-                <p className="truncate text-sm font-semibold text-steel-50">{machine.model}</p>
-              </>
-            )}
-            {hasCustomName && <p className="mt-0.5 truncate text-xs text-steel-400">&ldquo;{machine.name}&rdquo;</p>}
+        <div className={`w-1.5 shrink-0 ${isUnidentified ? 'bg-tech-400/50' : 'bg-safety-400'}`} />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="relative min-w-0 flex-1">
+            <Link
+              to={`/machines/${machine.id}`}
+              className="block min-w-0 flex-1 px-3 py-3 pr-10 transition-colors hover:bg-steel-800/60"
+            >
+              {isUnidentified ? (
+                <>
+                  <p className="truncate text-[10px] font-medium tracking-wide text-tech-400 uppercase">
+                    Identifying…
+                  </p>
+                  <p className="truncate text-sm font-semibold text-steel-50">{machine.name}</p>
+                </>
+              ) : (
+                <>
+                  <p className="truncate text-[10px] font-medium tracking-wide text-steel-500 uppercase">
+                    {machine.make}
+                  </p>
+                  <p className="truncate text-sm font-semibold text-steel-50">{machine.model}</p>
+                </>
+              )}
+              {hasCustomName && (
+                <p className="mt-0.5 truncate text-xs text-steel-400">&ldquo;{machine.name}&rdquo;</p>
+              )}
+            </Link>
+            <button
+              type="button"
+              aria-label={`Delete ${machine.name}`}
+              disabled={deleting}
+              onClick={(e) => void handleDelete(e)}
+              className="absolute top-2 right-2 rounded-lg p-1.5 text-danger-500/80 hover:bg-danger-500/15 hover:text-danger-500 disabled:opacity-50"
+            >
+              <TrashIcon className="h-4 w-4" />
+            </button>
           </div>
+          <Link
+            to={`/machines/${machine.id}/repair`}
+            className="border-t border-steel-800 px-3 py-2 text-xs font-medium text-tech-400 transition-colors hover:bg-steel-800/60 hover:text-tech-300"
+          >
+            Talk to Gus →
+          </Link>
         </div>
       </div>
     </Card>
@@ -78,7 +138,9 @@ export function FleetPage() {
       </div>
 
       {error && (
-        <Card className="border-danger-500/40 p-3 text-sm text-danger-500">Couldn't load machines: {error}</Card>
+        <Card className="border-danger-500/40 p-3 text-sm text-danger-500">
+          Couldn&apos;t load machines: {error}
+        </Card>
       )}
 
       {machines === null && !error && <p className="text-sm text-steel-400">Loading…</p>}
@@ -96,9 +158,11 @@ export function FleetPage() {
       {machines && machines.length > 0 && (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {machines.map((machine) => (
-            <Link key={machine.id} to={`/machines/${machine.id}`}>
-              <MachineNameplate machine={machine} />
-            </Link>
+            <MachineNameplate
+              key={machine.id}
+              machine={machine}
+              onDeleted={(id) => setMachines((prev) => (prev ? prev.filter((m) => m.id !== id) : prev))}
+            />
           ))}
         </div>
       )}

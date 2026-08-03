@@ -16,6 +16,8 @@ import { parseModelResponse } from '../_shared/parseResponse.ts'
 import { ResponseStreamFilter } from '../_shared/streamFilter.ts'
 
 const FREE_DIAGNOSIS_LIMIT = Number(Deno.env.get('FREE_DIAGNOSIS_LIMIT') ?? '3')
+/** On by default; set ENFORCE_FREE_TIER=false to disable the paywall while testing. */
+const ENFORCE_FREE_TIER = Deno.env.get('ENFORCE_FREE_TIER') !== 'false'
 
 interface ChatRequestBody {
   machine_id: string
@@ -93,7 +95,12 @@ Deno.serve(async (req: Request) => {
 
   const isFirstMessageOnMachine = (conversationCount ?? 0) === 0
   const isSubscribed = profile?.is_subscribed ?? false
-  if (isFirstMessageOnMachine && !isSubscribed && (diagnosisCount ?? 0) >= FREE_DIAGNOSIS_LIMIT) {
+  if (
+    ENFORCE_FREE_TIER &&
+    isFirstMessageOnMachine &&
+    !isSubscribed &&
+    (diagnosisCount ?? 0) >= FREE_DIAGNOSIS_LIMIT
+  ) {
     return jsonResponse(
       {
         error: 'free_tier_limit_reached',

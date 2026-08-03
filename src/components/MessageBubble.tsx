@@ -1,13 +1,17 @@
 import type { ReactNode } from 'react'
 import { GUS_AVATAR_URL } from '../lib/gusAssets'
+import { AssistantMessageBody } from './AssistantMessageBody'
 
 export function MessageBubble({
   role,
   children,
+  content,
   streaming,
 }: {
   role: 'user' | 'assistant'
-  children: ReactNode
+  children?: ReactNode
+  /** Assistant text — rendered as structured sections when present */
+  content?: string
   streaming?: boolean
 }) {
   const isUser = role === 'user'
@@ -26,11 +30,12 @@ export function MessageBubble({
     <div className="flex items-end justify-start gap-2">
       <img src={GUS_AVATAR_URL} alt="Gus" className="mb-1 h-7 w-7 shrink-0 rounded-full object-cover" />
       <div
-        className={`relative max-w-[85%] overflow-hidden rounded-2xl rounded-bl-sm border bg-steel-900 px-4 py-3 text-[15px] leading-relaxed whitespace-pre-wrap text-steel-100
-          ${streaming ? 'border-tech-400/50' : 'border-steel-700'}`}
+        className={`relative max-w-[85%] overflow-hidden rounded-2xl rounded-bl-sm border bg-steel-900/95 px-4 py-3 text-[15px] leading-relaxed text-steel-100 shadow-lg backdrop-blur-md
+          ${streaming ? 'border-tech-400/50' : 'border-steel-700/80'}`}
       >
         {streaming && <div className="scan-sweep" />}
         {children}
+        {content != null && content !== '' && <AssistantMessageBody content={content} />}
         {streaming && <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-tech-400 align-middle" />}
       </div>
     </div>
