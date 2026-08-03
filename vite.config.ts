@@ -4,8 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  // Relative asset paths so Capacitor iOS/Android can load JS/CSS from the bundle.
-  base: './',
+  // Default `/` for Vercel/web. iOS uses `vite build --base ./` via build:ios.
   plugins: [react(), tailwindcss()],
   server: {
     host: true, // expose on LAN so you can open from a phone on the same Wi‑Fi
