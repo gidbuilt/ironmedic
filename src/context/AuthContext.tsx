@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
-import { supabase } from '../lib/supabase'
+import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import type { Profile } from '../types/database'
 
 interface AuthContextValue {
@@ -50,34 +50,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function ensureSession() {
       setAuthError(null)
-      const { data } = await supabase.auth.getSession()
-      if (cancelled) return
 
-      if (data.session) {
-        setSession(data.session)
-        await loadProfile(data.session.user.id)
-        if (!cancelled) setLoading(false)
-        return
-      }
-
-      const { data: anon, error } = await supabase.auth.signInAnonymously()
-      if (cancelled) return
-
-      if (error || !anon.session) {
-        console.error('[auth] anonymous sign-in failed', error)
+      if (!isSupabaseConfigured) {
         setSession(null)
         setProfile(null)
-        setAuthError(
-          error?.message ??
-            'Guest access is not enabled. In Supabase: Authentication → Providers → Anonymous → Enable.',
-        )
+        setAuthError('App is missing Supabase configuration. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.')
         setLoading(false)
         return
       }
 
-      setSession(anon.session)
-      await loadProfile(anon.session.user.id)
-      if (!cancelled) setLoading(false)
+      try {
+        const { data } = await supabase.auth.getSession()
+        if (cancelled) return
+
+        if (data.session) {
+          setSession(data.session)
+          await loadProfile(data.session.user.id)
+          if (!cancelled) setLoading(false)
+          return
+        }
+
+        const { data: anon, error } = await supabase.auth.signInAnonymously()
+        if (cancelled) return
+
+        if (error || !anon.session) {
+          console.error('[auth] anonymous sign-in failed', error)
+          setSession(null)
+          setProfile(null)
+          setAuthError(
+            error?.message ??
+              'Guest access is not enabled. In Supabase: Authentication → Providers → Anonymous → Enable.',
+          )
+          setLoading(false)
+          return
+        }
+
+        setSession(anon.session)
+        await loadProfile(anon.session.user.id)
+        if (!cancelled) setLoading(false)
+      } catch (err) {
+        console.error('[auth] bootstrap failed', err)
+        if (!cancelled) {
+          setSession(null)
+          setProfile(null)
+          setAuthError(err instanceof Error ? err.message : 'Could not start a session.')
+          setLoading(false)
+        }
+      }
     }
 
     void ensureSession()
