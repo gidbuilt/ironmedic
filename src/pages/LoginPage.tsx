@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Card } from '../components/ui/Card'
-import { IRONMEDIC_WORDMARK_URL } from '../lib/gusAssets'
+import { BrandMark } from '../components/BrandMark'
 
 export function LoginPage() {
   const { user, loading, isAnonymous, signInWithPassword, signInAnonymously, resetPasswordForEmail } =
@@ -29,13 +29,16 @@ export function LoginPage() {
     e.preventDefault()
     setSubmitting(true)
     setError(null)
-    const { error } = await signInWithPassword(email, password)
-    setSubmitting(false)
-    if (error) {
-      setError(error)
-      return
+    try {
+      const { error } = await signInWithPassword(email, password)
+      if (error) {
+        setError(error)
+        return
+      }
+      navigate(next.startsWith('/') ? next : '/')
+    } finally {
+      setSubmitting(false)
     }
-    navigate(next.startsWith('/') ? next : '/')
   }
 
   async function handleForgotSubmit(e: FormEvent) {
@@ -43,44 +46,44 @@ export function LoginPage() {
     setSubmitting(true)
     setError(null)
     setResetSent(false)
-    const { error } = await resetPasswordForEmail(email)
-    setSubmitting(false)
-    if (error) {
-      setError(error)
-      return
+    try {
+      const { error } = await resetPasswordForEmail(email)
+      if (error) {
+        setError(error)
+        return
+      }
+      setResetSent(true)
+    } finally {
+      setSubmitting(false)
     }
-    setResetSent(true)
   }
 
   async function continueAsGuest() {
     setSubmitting(true)
     setError(null)
-    const { error } = await signInAnonymously()
-    setSubmitting(false)
-    if (error) {
-      setError(error)
-      return
+    try {
+      const { error } = await signInAnonymously()
+      if (error) {
+        setError(error)
+        return
+      }
+      navigate('/')
+    } finally {
+      setSubmitting(false)
     }
-    navigate('/')
   }
 
   return (
-    <div className="tech-grid relative flex min-h-screen items-center justify-center overflow-hidden px-4 pt-[env(safe-area-inset-top)]">
-      <div className="hazard-stripe absolute inset-x-0 top-0 h-1.5" />
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <img
-            src={IRONMEDIC_WORDMARK_URL}
-            alt="IronMedic"
-            className="mx-auto h-12 w-auto max-w-[16rem] object-contain sm:h-14"
-            draggable={false}
-          />
-          <p className="mt-3 font-mono text-xs tracking-widest text-tech-400 uppercase">
-            AI Heavy-Equipment Diagnostics
+    <div className="tech-grid relative flex min-h-[100dvh] flex-col items-center justify-center overflow-y-auto px-4 pb-[max(1.5rem,env(safe-area-inset-bottom),var(--keyboard-inset))] pt-[env(safe-area-inset-top)]">
+      <div className="hazard-stripe absolute inset-x-0 top-0 h-1 opacity-90" />
+      <div className="fade-up w-full max-w-sm">
+        <div className="mb-9 flex flex-col items-center text-center">
+          <BrandMark size="hero" />
+          <p className="mt-4 max-w-xs text-[15px] leading-relaxed text-steel-400">
+            AI heavy-equipment diagnostics. Ask Gus — he never guesses.
           </p>
-          <p className="mt-2 text-steel-400">Ask Gus. He never guesses.</p>
         </div>
-        <Card accent="tech" className="p-6">
+        <Card accent="tech" className="p-6 sm:p-7">
           {mode === 'forgot' ? (
             resetSent ? (
               <div className="text-center">

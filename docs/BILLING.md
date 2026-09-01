@@ -1,8 +1,9 @@
 # IronMedic billing (Stripe)
 
 ## Plans
-- **Free** — 3 diagnoses per account (`FREE_DIAGNOSIS_LIMIT`)
-- **Pro** — $12 CAD/month, unlimited diagnoses (`profiles.is_subscribed = true`)
+- **Free** — 20 messages with Gus per account (`FREE_MESSAGE_LIMIT`), tracked on
+  `profiles.gus_messages_used` (lifetime; clearing chats does **not** reset it)
+- **Pro** — $12 CAD/month, unlimited messages (`profiles.is_subscribed = true`)
 
 ## One-time Stripe setup
 1. Create a Stripe account → Product **IronMedic Pro** → recurring Price **$12 CAD/month**.

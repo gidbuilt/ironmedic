@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { openBillingPortal } from '../lib/billing'
-import { FREE_DIAGNOSIS_LIMIT } from '../lib/plans'
+import { FREE_MESSAGE_LIMIT } from '../lib/plans'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
@@ -67,13 +67,18 @@ export function AccountPage() {
     setUpgradeMsg(null)
     setError(null)
     setBusy(true)
-    const { error } = await upgradeGuestAccount(upgradeEmail.trim(), upgradePassword)
-    setBusy(false)
-    if (error) {
-      setError(error)
-      return
+    try {
+      const { error } = await upgradeGuestAccount(upgradeEmail.trim(), upgradePassword)
+      if (error) {
+        setError(error)
+        return
+      }
+      setUpgradeMsg(
+        'Account saved. If email confirmation is required, check your inbox, then sign in with your new credentials.',
+      )
+    } finally {
+      setBusy(false)
     }
-    setUpgradeMsg('Account saved. Check your email if confirmation is required, then you can subscribe.')
   }
 
   async function handleBilling() {
@@ -89,42 +94,44 @@ export function AccountPage() {
   }
 
   return (
-    <div className="mx-auto max-w-lg space-y-4 pb-10">
-      <Link to="/" className="text-sm text-steel-400 hover:text-steel-200">
-        &larr; Back
-      </Link>
-
-      <Card accent="tech" className="space-y-4 p-6">
-        <h1 className="text-xl font-semibold text-steel-50">Account</h1>
-        <p className="text-sm text-steel-400">
+    <div className="fade-up mx-auto max-w-lg space-y-5 pb-10">
+      <div className="space-y-1.5">
+        <Link to="/" className="im-pill !px-2.5">
+          ← Back
+        </Link>
+        <p className="mt-3 font-mono text-[10px] tracking-[0.18em] text-steel-500 uppercase">Settings</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-steel-50">Account</h1>
+        <p className="text-[15px] text-steel-400">
           {isAnonymous
             ? 'You’re using IronMedic as a guest on this device.'
             : `Signed in as ${user?.email ?? 'your account'}.`}
         </p>
+      </div>
 
-        <div className="rounded-xl border border-steel-700 bg-steel-900/80 px-4 py-3">
-          <p className="font-mono text-[10px] tracking-widest text-steel-500 uppercase">Plan</p>
-          <p className="mt-1 text-lg font-semibold text-steel-50">
+      <Card accent="tech" className="space-y-5 p-6 sm:p-7">
+        <div className="rounded-2xl border border-steel-700/80 bg-steel-950/50 px-4 py-4">
+          <p className="font-mono text-[10px] tracking-[0.16em] text-steel-500 uppercase">Plan</p>
+          <p className="mt-1.5 text-xl font-semibold tracking-tight text-steel-50">
             {isSubscribed ? 'Pro' : 'Free'}
             {!isSubscribed && (
               <span className="ml-2 text-sm font-normal text-steel-400">
-                · {FREE_DIAGNOSIS_LIMIT} diagnoses included
+                · {FREE_MESSAGE_LIMIT} messages included
               </span>
             )}
           </p>
           {params.get('checkout') === 'success' && (
-            <p className="mt-1 text-sm text-safe-500">Payment received — Pro unlocks within a minute.</p>
+            <p className="mt-2 text-sm text-safe-500">Payment received — Pro unlocks within a minute.</p>
           )}
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap gap-2">
             {!isSubscribed && (
               <Link to="/pricing">
-                <Button className="min-h-10 px-4 py-2 text-sm">Upgrade to Pro</Button>
+                <Button size="sm">Upgrade to Pro</Button>
               </Link>
             )}
             {isSubscribed && (
               <Button
                 variant="secondary"
-                className="min-h-10 px-4 py-2 text-sm"
+                size="sm"
                 disabled={billingBusy}
                 onClick={() => void handleBilling()}
               >
@@ -135,9 +142,9 @@ export function AccountPage() {
         </div>
 
         {isAnonymous && (
-          <form onSubmit={handleUpgradeGuest} className="space-y-3 border-t border-steel-800 pt-4">
-            <p className="text-sm font-medium text-steel-200">Save this account</p>
-            <p className="text-sm text-steel-500">
+          <form onSubmit={handleUpgradeGuest} className="space-y-3 border-t border-steel-800/80 pt-5">
+            <p className="text-sm font-semibold text-steel-100">Save this account</p>
+            <p className="text-sm leading-relaxed text-steel-500">
               Add email and password so your machines and chats stay with you — required before Pro
               checkout.
             </p>
@@ -166,20 +173,20 @@ export function AccountPage() {
         )}
 
         {!isAnonymous && (
-          <div className="border-t border-steel-800 pt-4">
-            <Link to="/pricing" className="text-sm text-tech-400 hover:underline">
+          <div className="border-t border-steel-800/80 pt-5">
+            <Link to="/pricing" className="text-sm font-medium text-tech-400 hover:text-tech-300">
               View pricing →
             </Link>
           </div>
         )}
 
-        <div className="space-y-2 border-t border-steel-800 pt-4">
-          <p className="text-sm font-medium text-steel-200">Delete account &amp; data</p>
-          <p className="text-sm text-steel-500">
+        <div className="space-y-2 border-t border-steel-800/80 pt-5">
+          <p className="text-sm font-semibold text-steel-100">Delete account &amp; data</p>
+          <p className="text-sm leading-relaxed text-steel-500">
             Removes your machines, chats, diagnoses, and uploaded manuals for this account.
           </p>
           {error && <p className="text-sm text-danger-500">{error}</p>}
-          <Button variant="danger" disabled={busy} onClick={() => void deleteAccount()}>
+          <Button variant="danger" size="sm" disabled={busy} onClick={() => void deleteAccount()}>
             {busy ? 'Deleting…' : 'Delete my data'}
           </Button>
         </div>
@@ -188,6 +195,10 @@ export function AccountPage() {
           See our{' '}
           <Link to="/privacy" className="text-tech-400 hover:underline">
             Privacy Policy
+          </Link>{' '}
+          and{' '}
+          <Link to="/support" className="text-tech-400 hover:underline">
+            Support
           </Link>
           .
         </p>

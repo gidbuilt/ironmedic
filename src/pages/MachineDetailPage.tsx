@@ -40,49 +40,84 @@ export function MachineDetailPage() {
     getMachine(id).then(setMachine).catch((err) => setError(err.message))
   }, [id])
 
-  if (error) return <Card className="border-danger-500/40 p-4 text-danger-500">{error}</Card>
-  if (!machine) return <p className="text-steel-400">Loading&hellip;</p>
+  if (error) {
+    return (
+      <div className="fade-up space-y-4">
+        <Link to="/machines" className="im-pill !px-2.5">
+          ← Fleet
+        </Link>
+        <Card className="border-danger-500/40 p-4 text-sm text-danger-500">{error}</Card>
+      </div>
+    )
+  }
+
+  if (!machine) {
+    return (
+      <div className="fade-up space-y-4">
+        <div className="im-skeleton h-8 w-28 rounded-full" />
+        <div className="im-skeleton h-40 rounded-2xl" />
+        <div className="im-skeleton h-28 rounded-2xl" />
+      </div>
+    )
+  }
 
   return (
-    <div className="flex flex-col gap-6">
-      <Card accent="tech" className="p-6">
+    <div className="fade-up flex flex-col gap-6 pb-10">
+      <div className="space-y-1.5">
+        <Link to="/machines" className="im-pill !px-2.5">
+          ← Fleet
+        </Link>
+      </div>
+
+      <Card accent="tech" className="p-5 sm:p-6">
         {editing ? (
-          <EditMachineForm machine={machine} onSaved={(m) => { setMachine(m); setEditing(false) }} onCancel={() => setEditing(false)} />
+          <EditMachineForm
+            machine={machine}
+            onSaved={(m) => {
+              setMachine(m)
+              setEditing(false)
+            }}
+            onCancel={() => setEditing(false)}
+          />
         ) : (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-5">
             <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="font-mono text-[11px] font-semibold tracking-widest text-tech-400 uppercase">
+              <div className="min-w-0">
+                <p className="font-mono text-[10px] font-semibold tracking-[0.16em] text-tech-400 uppercase">
                   Equipment record
                 </p>
-                <h1 className="text-2xl font-semibold text-steel-50">{machine.name}</h1>
+                <h1 className="mt-1 truncate text-2xl font-semibold tracking-tight text-steel-50">
+                  {machine.name}
+                </h1>
               </div>
               <div className="flex shrink-0 gap-2">
-                <Button variant="secondary" className="min-h-9 px-3 py-2 text-sm" onClick={() => setEditing(true)}>
+                <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
                   Edit
                 </Button>
                 <Button
                   variant="danger"
-                  className="min-h-9 px-3 py-2 text-sm"
+                  size="sm"
                   onClick={async () => {
                     if (!confirm(`Delete ${machine.name}? This can't be undone.`)) return
                     await deleteMachine(machine.id)
-                    navigate('/')
+                    navigate('/machines')
                   }}
                 >
                   Delete
                 </Button>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-steel-800 bg-steel-800 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-steel-700/80 bg-steel-700/80 sm:grid-cols-4">
               {[
                 { label: 'Make', value: machine.make || '—' },
                 { label: 'Model', value: machine.model || '—' },
                 { label: 'Serial', value: machine.serial_number || '—' },
                 { label: 'Hours', value: machine.hours != null ? machine.hours : '—' },
               ].map((f) => (
-                <div key={f.label} className="bg-steel-900 px-4 py-3">
-                  <p className="font-mono text-[10px] tracking-widest text-steel-500 uppercase">{f.label}</p>
+                <div key={f.label} className="bg-steel-900/95 px-3.5 py-3 sm:px-4">
+                  <p className="font-mono text-[10px] tracking-[0.14em] text-steel-500 uppercase">
+                    {f.label}
+                  </p>
                   <p className="mt-0.5 truncate font-mono text-sm font-semibold text-steel-100">{f.value}</p>
                 </div>
               ))}
@@ -92,30 +127,38 @@ export function MachineDetailPage() {
       </Card>
 
       <div>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-mono text-xs font-semibold tracking-widest text-steel-500 uppercase">Diagnostic modes</h2>
-          <Link to={`/machines/${machine.id}/log`} className="text-sm text-steel-400 hover:text-steel-200">
-            Service Log &rarr;
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="font-mono text-[10px] font-semibold tracking-[0.18em] text-steel-500 uppercase">
+            Diagnostic modes
+          </h2>
+          <Link
+            to={`/machines/${machine.id}/log`}
+            className="text-sm font-medium text-steel-400 transition-colors hover:text-tech-300"
+          >
+            Service Log →
           </Link>
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
           {MODES.map((mode) =>
             mode.available ? (
-              <Link key={mode.id} to={`/machines/${machine.id}/${mode.id}`}>
-                <Card className="h-full p-5 transition-colors hover:border-safety-400/50">
+              <Link key={mode.id} to={`/machines/${machine.id}/${mode.id}`} className="group">
+                <Card className="h-full p-5 transition-colors group-hover:border-safety-400/45">
                   <p className="font-semibold text-steel-50">{mode.title}</p>
-                  <p className="mt-1 text-sm text-steel-400">{mode.description}</p>
+                  <p className="mt-1.5 text-sm leading-relaxed text-steel-400">{mode.description}</p>
+                  <p className="mt-3 text-xs font-medium text-safety-400 group-hover:text-safety-300">
+                    Start with Gus →
+                  </p>
                 </Card>
               </Link>
             ) : (
-              <Card key={mode.id} className="h-full p-5 opacity-50">
-                <div className="flex items-center justify-between">
+              <Card key={mode.id} className="h-full p-5 opacity-55">
+                <div className="flex items-center justify-between gap-2">
                   <p className="font-semibold text-steel-50">{mode.title}</p>
-                  <span className="rounded-xl bg-steel-700 px-2 py-0.5 font-mono text-[10px] tracking-wide text-steel-300 uppercase">
-                    Coming soon
+                  <span className="shrink-0 rounded-full bg-steel-800 px-2 py-0.5 font-mono text-[10px] tracking-wide text-steel-400 uppercase">
+                    Soon
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-steel-400">{mode.description}</p>
+                <p className="mt-1.5 text-sm leading-relaxed text-steel-400">{mode.description}</p>
               </Card>
             ),
           )}
@@ -167,14 +210,14 @@ function EditMachineForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <Input label="Nickname" required value={name} onChange={(e) => setName(e.target.value)} />
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         <Input label="Make" required value={make} onChange={(e) => setMake(e.target.value)} />
         <Input label="Model" required value={model} onChange={(e) => setModel(e.target.value)} />
       </div>
       <Input label="Serial number" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} />
       <Input label="Hours" type="number" min={0} value={hours} onChange={(e) => setHours(e.target.value)} />
       {error && <p className="text-sm text-danger-500">{error}</p>}
-      <div className="flex gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
         <Button type="submit" disabled={submitting}>
           {submitting ? 'Saving…' : 'Save changes'}
         </Button>

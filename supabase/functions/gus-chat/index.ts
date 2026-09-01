@@ -15,7 +15,7 @@ import { callClaudeStream, parseAnthropicStream, type ClaudeContentBlock, type C
 import { parseModelResponse } from '../_shared/parseResponse.ts'
 import { ResponseStreamFilter } from '../_shared/streamFilter.ts'
 
-const FREE_DIAGNOSIS_LIMIT = Number(Deno.env.get('FREE_DIAGNOSIS_LIMIT') ?? '3')
+const FREE_MESSAGE_LIMIT = Number(Deno.env.get('FREE_MESSAGE_LIMIT') ?? '20')
 /** On by default; set ENFORCE_FREE_TIER=false to disable the paywall while testing. */
 const ENFORCE_FREE_TIER = Deno.env.get('ENFORCE_FREE_TIER') !== 'false'
 
@@ -86,28 +86,38 @@ Deno.serve(async (req: Request) => {
   if (machineError) return jsonResponse({ error: machineError.message }, 500)
   if (!machine) return jsonResponse({ error: 'machine_not_found' }, 404)
 
-  // --- Free-tier enforcement (server-side, per Section 8 security notes) ---
-  const [{ count: conversationCount }, { data: profile }, { count: diagnosisCount }] = await Promise.all([
-    userClient.from('conversations').select('id', { count: 'exact', head: true }).eq('machine_id', machine_id),
-    userClient.from('profiles').select('is_subscribed').eq('id', user.id).maybeSingle(),
-    userClient.from('diagnoses').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
-  ])
+  // --- Free-tier enforcement (server-side): lifetime messages per account ---
+  // Count lives on profiles.gus_messages_used so deleting chats/machines cannot reset it.
+  if (ENFORCE_FREE_TIER) {
+    const { data: consumeRaw, error: consumeError } = await userClient.rpc('try_consume_gus_message', {
+      p_limit: FREE_MESSAGE_LIMIT,
+    })
+    if (consumeError) {
+      console.error('gus-chat: try_consume_gus_message failed', consumeError)
+      return jsonResponse(
+        {
+          error: 'usage_check_failed',
+          message:
+            'Couldn’t verify your message allowance. Retry in a moment — if it keeps failing, ask support to apply the latest database update.',
+        },
+        500,
+      )
+    }
 
-  const isFirstMessageOnMachine = (conversationCount ?? 0) === 0
-  const isSubscribed = profile?.is_subscribed ?? false
-  if (
-    ENFORCE_FREE_TIER &&
-    isFirstMessageOnMachine &&
-    !isSubscribed &&
-    (diagnosisCount ?? 0) >= FREE_DIAGNOSIS_LIMIT
-  ) {
-    return jsonResponse(
-      {
-        error: 'free_tier_limit_reached',
-        message: `You've used your ${FREE_DIAGNOSIS_LIMIT} free diagnoses. Upgrade to keep working with Gus.`,
-      },
-      402,
-    )
+    const consume =
+      typeof consumeRaw === 'string'
+        ? (JSON.parse(consumeRaw) as { allowed?: boolean; is_subscribed?: boolean })
+        : (consumeRaw as { allowed?: boolean; is_subscribed?: boolean } | null)
+
+    if (!consume?.allowed && !consume?.is_subscribed) {
+      return jsonResponse(
+        {
+          error: 'free_tier_limit_reached',
+          message: `You've used your ${FREE_MESSAGE_LIMIT} free messages. Upgrade to keep working with Gus.`,
+        },
+        402,
+      )
+    }
   }
 
   // --- Gather conversation history BEFORE inserting this turn ---
@@ -172,7 +182,16 @@ Deno.serve(async (req: Request) => {
     { role: 'user', content: currentContentBlocks },
   ]
 
-  const systemPrompt = buildSystemPrompt({
+  const recentNextSteps = (historyRows ?? [])
+    .filter((row: { role: string }) => row.role === 'assistant')
+    .map((row: { content: string }) => {
+      const m = row.content.match(/##\s*Next Step\s*\r?\n+([^\n#]+)/i)
+      return m?.[1]?.trim().replace(/\s+/g, ' ').slice(0, 140) ?? null
+    })
+    .filter((s: string | null): s is string => Boolean(s))
+    .slice(-5)
+
+  let systemPrompt = buildSystemPrompt({
     machine: {
       name: machine.name,
       make: machine.make,
@@ -193,6 +212,25 @@ Deno.serve(async (req: Request) => {
     // have a cached common-issues summary for this make/model/symptom.
     hasWebSearchTool: !cachedCommonIssues,
   })
+
+  if (recentNextSteps.length > 0) {
+    const lastUserReply = userMessage.trim().slice(0, 200)
+    systemPrompt += `\n\n---\n\nANTI-LOOP (this conversation — hard rules):
+Your recent Next Steps were:
+${recentNextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+
+The operator's latest reply (answers #${recentNextSteps.length} above):
+"${lastUserReply}"
+
+YOU MUST:
+- Treat that reply as the answer to the most recent Next Step. Do NOT re-ask it.
+- Do NOT reuse the same question text, the same → chip list, or a near-paraphrase.
+- If your Summary already draws a conclusion from their answer (e.g. noise tracks
+  RPM → pump/suction), Next Step MUST be the next VERIFYING check that conclusion
+  implies (oil level / sight glass, suction air, cavitation signs, pressure, etc.) —
+  never the prior "what does it sound like?" fork again.
+- Advance: new question, new check, or diagnosis/repair — always forward.`
+  }
 
   let anthropicResponse: Response
   try {

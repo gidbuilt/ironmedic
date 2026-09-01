@@ -12,13 +12,15 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
   const inputId = id ?? props.name
   return (
     <label className="flex flex-col gap-1.5">
-      {label && <span className="font-mono text-xs font-medium tracking-wide text-steel-400 uppercase">{label}</span>}
+      {label && (
+        <span className="font-mono text-[11px] font-medium tracking-wider text-steel-400 uppercase">
+          {label}
+        </span>
+      )}
       <textarea
         ref={ref}
         id={inputId}
-        className={`min-h-24 resize-none rounded-xl border border-steel-600 bg-steel-800 px-4 py-3 text-base
-          text-steel-50 placeholder:text-steel-500 outline-none transition-colors
-          focus:border-tech-400 ${error ? 'border-danger-500' : ''} ${className}`}
+        className={`im-field min-h-24 ${error ? '!border-danger-500' : ''} ${className}`}
         {...props}
       />
       {error && <span className="text-sm text-danger-500">{error}</span>}

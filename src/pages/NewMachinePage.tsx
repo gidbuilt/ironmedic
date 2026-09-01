@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { createMachine } from '../lib/machines'
 import { Card } from '../components/ui/Card'
@@ -39,10 +39,19 @@ export function NewMachinePage() {
   }
 
   return (
-    <div className="mx-auto max-w-lg">
-      <p className="font-mono text-[11px] font-semibold tracking-widest text-steel-500 uppercase">New equipment record</p>
-      <h1 className="mb-6 text-2xl font-semibold text-steel-50">Add a machine</h1>
-      <Card accent="tech" className="p-6">
+    <div className="fade-up mx-auto max-w-lg space-y-5 pb-10">
+      <div className="space-y-1.5">
+        <Link to="/machines" className="im-pill !px-2.5">
+          ← Fleet
+        </Link>
+        <p className="mt-3 font-mono text-[10px] tracking-[0.18em] text-steel-500 uppercase">
+          New equipment record
+        </p>
+        <h1 className="text-2xl font-semibold tracking-tight text-steel-50">Add a machine</h1>
+        <p className="text-[15px] text-steel-400">Nickname plus make and model is enough to start.</p>
+      </div>
+
+      <Card accent="tech" className="p-6 sm:p-7">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Input
             label="Nickname"
@@ -51,7 +60,7 @@ export function NewMachinePage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <Input
               label="Make"
               placeholder="John Deere"
@@ -80,11 +89,11 @@ export function NewMachinePage() {
             onChange={(e) => setHours(e.target.value)}
           />
           {error && <p className="text-sm text-danger-500">{error}</p>}
-          <div className="mt-2 flex gap-3">
-            <Button type="submit" disabled={submitting}>
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:gap-3">
+            <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
               {submitting ? 'Saving…' : 'Save machine'}
             </Button>
-            <Button type="button" variant="ghost" onClick={() => navigate(-1)}>
+            <Button type="button" variant="ghost" className="w-full sm:w-auto" onClick={() => navigate(-1)}>
               Cancel
             </Button>
           </div>

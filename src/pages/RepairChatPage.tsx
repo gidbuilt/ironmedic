@@ -23,13 +23,16 @@ export function RepairChatPage() {
   if (!machineId) return <p className="text-steel-400">Missing machine.</p>
 
   return (
-    <GusChatPanel
-      machineId={machineId}
-      initialMessage={prefillRef.current}
-      variant="page"
-      onInitialMessageConsumed={() => {
-        prefillRef.current = null
-      }}
-    />
+    <div className="flex h-full min-h-0 flex-col">
+      <GusChatPanel
+        machineId={machineId}
+        initialMessage={prefillRef.current}
+        variant="page"
+        onNewChat={() => navigate('/')}
+        onInitialMessageConsumed={() => {
+          prefillRef.current = null
+        }}
+      />
+    </div>
   )
 }

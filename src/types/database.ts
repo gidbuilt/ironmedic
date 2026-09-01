@@ -148,6 +148,7 @@ export type Profile = {
   id: string
   is_subscribed: boolean
   stripe_customer_id: string | null
+  gus_messages_used: number
   created_at: string
 }
 
@@ -222,6 +223,14 @@ export type Database = {
       delete_own_account: {
         Args: Record<string, never>
         Returns: undefined
+      }
+      try_consume_gus_message: {
+        Args: { p_limit: number }
+        Returns: {
+          allowed: boolean
+          messages_used: number
+          is_subscribed: boolean
+        }
       }
     }
   }

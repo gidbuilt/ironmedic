@@ -5,41 +5,38 @@
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
   --font-display: "Bebas Neue", ui-sans-serif, sans-serif;
 
-  /* Charcoal / steel base — pushed toward the near-black of a dealer
-     service-console UI (Cat SIS's header/chrome) rather than a soft dark
-     theme. */
-  --color-steel-950: #08090b;
-  --color-steel-900: #131518;
-  --color-steel-800: #1c1f24;
-  --color-steel-700: #272b32;
-  --color-steel-600: #363b44;
-  --color-steel-500: #4a505c;
-  --color-steel-400: #6b7280;
-  --color-steel-300: #9aa1ac;
-  --color-steel-200: #c3c8d0;
-  --color-steel-100: #e6e8eb;
-  --color-steel-50: #f4f5f6;
+  /* Charcoal / steel — layered dark, not crushed pure black */
+  --color-steel-950: #0b0d11;
+  --color-steel-900: #14181f;
+  --color-steel-800: #1c2129;
+  --color-steel-700: #2a303a;
+  --color-steel-600: #3a414c;
+  --color-steel-500: #525966;
+  --color-steel-400: #7a8290;
+  --color-steel-300: #a4abb8;
+  --color-steel-200: #c8cdd6;
+  --color-steel-100: #e8eaee;
+  --color-steel-50: #f5f6f8;
 
-  /* Cat-yellow — the brand/CTA accent. Tuned toward Caterpillar's actual
-     Pantone 123 yellow rather than a generic safety yellow. Reserved for
-     CTAs, active states, and machine/equipment identity. */
+  /* Equipment yellow — CTAs / brand */
   --color-safety-600: #a67900;
   --color-safety-500: #d9a300;
   --color-safety-400: #ffc72c;
   --color-safety-300: #ffdb70;
 
-  /* Tech-cyan — the AI/diagnostics accent, distinct from the equipment
-     brand color. Used for anything "Gus is actively reasoning" — streaming
-     indicators, scan lines, active-stage glow — never for static chrome. */
+  /* Tech-cyan — Gus / live diagnostics (use sparingly) */
   --color-tech-600: #0e7490;
   --color-tech-500: #06b6d4;
   --color-tech-400: #22d3ee;
   --color-tech-300: #67e8f9;
 
-  /* Status colors */
   --color-safe-500: #3fb27f;
   --color-caution-500: #e2a63b;
   --color-danger-500: #e0533d;
+}
+
+:root {
+  --keyboard-inset: 0px;
 }
 
 html,
@@ -50,8 +47,8 @@ body,
 
 body {
   @apply bg-steel-950 text-steel-100 font-sans antialiased;
-  /* Side / bottom insets; top inset lives on the sticky header (and auth screens). */
-  padding-bottom: env(safe-area-inset-bottom);
+  /* Keyboard only — screens/composers own safe-area-inset-bottom so we don't double-pad */
+  padding-bottom: var(--keyboard-inset, 0px);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
 }
@@ -60,44 +57,75 @@ body {
   @apply bg-safety-400/30 text-steel-50;
 }
 
-/* Large, glove-friendly focus ring for outdoor/gloved use */
 :focus-visible {
   outline: 2px solid var(--color-tech-400);
   outline-offset: 2px;
 }
 
 .scrollbar-thin::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  @apply bg-steel-600 rounded-full;
+  @apply rounded-full bg-steel-600/80;
 }
 
-/* ---------------------------------------------------------------------
-   Design-system utilities — heavy-equipment dealer console (Cat SIS)
-   patterned chrome, combined with an AI-diagnostics visual language.
-   --------------------------------------------------------------------- */
-
-/* Soft brand gradient bar — a friendly accent line (yellow -> cyan) used
-   thin, never as a large field. Traded the old diagonal caution-stripe
-   motif for this: it kept reading as a warning label instead of a fun,
-   welcoming accent. */
 .hazard-stripe {
-  background-image: linear-gradient(90deg, var(--color-safety-400), var(--color-tech-400));
+  background-image: linear-gradient(
+    90deg,
+    var(--color-safety-400),
+    color-mix(in srgb, var(--color-safety-400) 55%, var(--color-tech-400)),
+    var(--color-tech-400)
+  );
 }
 
-/* Faint schematic/circuit grid — a subtle "this is a technical instrument"
-   backdrop texture. Kept very low-contrast so it never competes with
-   content. */
+/* App chrome — elevated glass, soft brand wash (not flat black bar) */
+.im-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(255, 199, 44, 0.1), transparent 42%),
+    radial-gradient(90% 120% at 100% 0%, rgba(34, 211, 238, 0.08), transparent 40%),
+    linear-gradient(180deg, rgba(28, 33, 41, 0.94) 0%, rgba(11, 13, 17, 0.88) 100%);
+  backdrop-filter: blur(20px) saturate(1.25);
+  -webkit-backdrop-filter: blur(20px) saturate(1.25);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 12px 40px rgba(0, 0, 0, 0.28);
+}
+
 .tech-grid {
   background-image:
-    linear-gradient(rgba(103, 232, 249, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(103, 232, 249, 0.05) 1px, transparent 1px);
-  background-size: 32px 32px;
+    linear-gradient(rgba(103, 232, 249, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(103, 232, 249, 0.035) 1px, transparent 1px);
+  background-size: 40px 40px;
   background-position: -1px -1px;
 }
 
-/* Slow horizontal sweep used behind "Gus is actively reasoning" states. */
+/* Shared form control surface */
+.im-field {
+  @apply min-h-12 w-full resize-none rounded-2xl border border-steel-600/80 bg-steel-800/90 px-4 py-3 text-base
+    text-steel-50 placeholder:text-steel-500 outline-none transition-[border-color,box-shadow,background-color] duration-150
+    focus:border-tech-400/80 focus:bg-steel-800 focus:shadow-[0_0_0_3px_rgba(34,211,238,0.12)];
+}
+
+.im-chip {
+  @apply rounded-xl border border-steel-600/70 bg-steel-900/80 px-3 py-2 text-sm font-medium text-steel-200
+    transition-colors duration-150 hover:border-tech-400/45 hover:bg-steel-800 hover:text-steel-50
+    disabled:cursor-not-allowed disabled:opacity-40;
+}
+
+.im-pill {
+  @apply inline-flex items-center justify-center rounded-full border border-steel-600/70 bg-steel-900/70
+    px-3 py-1.5 text-xs font-medium text-steel-300 transition-colors hover:border-steel-500 hover:text-steel-100;
+}
+
+/* Chat composer dock — flush to home indicator; shrink when keyboard lifts the body */
+.im-composer-dock {
+  padding-bottom: max(0.35rem, env(safe-area-inset-bottom, 0px));
+}
+html[data-keyboard='open'] .im-composer-dock {
+  padding-bottom: 0.35rem;
+}
+
 @keyframes scan-sweep {
   0% {
     transform: translateX(-100%);
@@ -117,7 +145,7 @@ body {
   position: absolute;
   inset: 0;
   width: 40%;
-  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.16), transparent);
+  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.14), transparent);
   animation: scan-sweep 2.2s linear infinite;
 }
 
@@ -134,3 +162,35 @@ body {
   animation: status-pulse 2s ease-in-out infinite;
 }
 
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.fade-up {
+  animation: fade-up 0.35s ease-out both;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+.im-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(38, 43, 52, 0.9) 25%,
+    rgba(54, 59, 68, 0.95) 50%,
+    rgba(38, 43, 52, 0.9) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}

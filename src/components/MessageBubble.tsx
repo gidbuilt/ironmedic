@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { GUS_AVATAR_URL } from '../lib/gusAssets'
+import type { DifferentialEntry } from '../types/database'
 import { AssistantMessageBody } from './AssistantMessageBody'
 
 export function MessageBubble({
@@ -7,19 +8,22 @@ export function MessageBubble({
   children,
   content,
   streaming,
+  onSelectCheck,
+  differential,
 }: {
   role: 'user' | 'assistant'
   children?: ReactNode
-  /** Assistant text — rendered as structured sections when present */
   content?: string
   streaming?: boolean
+  onSelectCheck?: (item: string) => void
+  differential?: DifferentialEntry[] | null
 }) {
   const isUser = role === 'user'
 
   if (isUser) {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-safety-400 px-4 py-3 text-[15px] leading-relaxed whitespace-pre-wrap text-steel-950">
+        <div className="max-w-[85%] rounded-[1.25rem] rounded-tr-md bg-safety-400 px-4 py-3 text-[15px] leading-relaxed whitespace-pre-wrap text-steel-950 shadow-[0_4px_20px_rgba(255,199,44,0.18)]">
           {children}
         </div>
       </div>
@@ -27,16 +31,29 @@ export function MessageBubble({
   }
 
   return (
-    <div className="flex items-end justify-start gap-2">
-      <img src={GUS_AVATAR_URL} alt="Gus" className="mb-1 h-7 w-7 shrink-0 rounded-full object-cover" />
+    <div className="flex items-end justify-start gap-2.5">
+      <img
+        src={GUS_AVATAR_URL}
+        alt="Gus"
+        className="mb-0.5 h-8 w-8 shrink-0 rounded-full border border-steel-700/80 object-cover shadow-md"
+      />
       <div
-        className={`relative max-w-[85%] overflow-hidden rounded-2xl rounded-bl-sm border bg-steel-900/95 px-4 py-3 text-[15px] leading-relaxed text-steel-100 shadow-lg backdrop-blur-md
-          ${streaming ? 'border-tech-400/50' : 'border-steel-700/80'}`}
+        className={`relative max-w-[85%] overflow-hidden rounded-[1.25rem] rounded-bl-md border bg-steel-900/92 px-4 py-3 text-[15px] leading-relaxed text-steel-100 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-md
+          ${streaming ? 'border-tech-400/45' : 'border-steel-700/60'}`}
       >
         {streaming && <div className="scan-sweep" />}
         {children}
-        {content != null && content !== '' && <AssistantMessageBody content={content} />}
-        {streaming && <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-tech-400 align-middle" />}
+        {content != null && content !== '' && (
+          <AssistantMessageBody
+            content={content}
+            onSelectCheck={onSelectCheck}
+            checksDisabled={streaming}
+            differential={differential}
+          />
+        )}
+        {streaming && (
+          <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-tech-400 align-middle" />
+        )}
       </div>
     </div>
   )

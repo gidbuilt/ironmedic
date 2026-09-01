@@ -20,18 +20,25 @@ export function FirstRunIntro() {
   }
 
   return (
-    <Card accent="yellow" className="mb-6 flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-4">
-        <img src={GUS_AVATAR_URL} alt="Gus" className="h-14 w-14 shrink-0 rounded-2xl object-cover" />
-        <div>
+    <Card
+      accent="yellow"
+      className="fade-up mb-5 flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <div className="flex items-start gap-4 sm:items-center">
+        <img
+          src={GUS_AVATAR_URL}
+          alt="Gus"
+          className="h-14 w-14 shrink-0 rounded-2xl object-cover shadow-md"
+        />
+        <div className="min-w-0 space-y-1">
           <p className="font-semibold text-steel-50">Say hi to Gus</p>
-          <p className="mt-1 text-sm text-steel-400">
-            Tell him what's going on and he'll dig in right away — real answers, a couple quick questions, no
-            forms to fill out first.
+          <p className="text-sm leading-relaxed text-steel-400">
+            Tell him what&apos;s going on and he&apos;ll dig in — real answers, a couple quick
+            questions, no forms first.
           </p>
         </div>
       </div>
-      <Button variant="secondary" className="min-h-10 shrink-0 px-4 py-2 text-sm" onClick={dismiss}>
+      <Button variant="secondary" size="sm" className="shrink-0 self-stretch sm:self-auto" onClick={dismiss}>
         Got it
       </Button>
     </Card>

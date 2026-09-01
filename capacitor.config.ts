@@ -20,7 +20,8 @@ const config: CapacitorConfig = {
       backgroundColor: '#08090b',
     },
     Keyboard: {
-      resize: 'body',
+      // App applies --keyboard-inset from Keyboard events (see nativeKeyboard.ts).
+      resize: 'none',
     },
   },
 }

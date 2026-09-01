@@ -21,7 +21,8 @@
    ```
 4. In Xcode: select your **Team** (signing), connected iPhone or simulator, Run.
 5. **App Store Connect**: create app with bundle id `com.ironmedic.app`.
-6. Set **Privacy Policy URL** to your hosted `/privacy` page (must be a public HTTPS URL — deploy the web app or host that page).
+6. Set **Privacy Policy URL** to `https://ironmedic.vercel.app/privacy`.
+7. Set **Support URL** to `https://ironmedic.vercel.app/support` (not the privacy page).
 7. Archive → Upload → TestFlight → Submit for Review.
 
 ## Billing (web)
@@ -33,4 +34,4 @@
 - Deployed Edge Functions (`gus-chat`, Stripe functions) against production Supabase
 - App Store screenshots (6.7" and 6.1" iPhones)
 - If the iOS app charges money: Apple **In-App Purchase** (Stripe web checkout alone is not enough on iOS)
-- Support URL + contact email in App Store Connect
+- Support URL: `https://ironmedic.vercel.app/support`

@@ -45,64 +45,64 @@ export function PricingPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 pb-10">
-      <div>
-        <Link to="/" className="text-sm text-steel-400 hover:text-steel-200">
-          &larr; Back
+    <div className="fade-up mx-auto max-w-3xl space-y-6 pb-10">
+      <div className="space-y-1.5">
+        <Link to="/" className="im-pill !px-2.5">
+          ← Back
         </Link>
-        <p className="mt-3 font-mono text-[11px] tracking-widest text-tech-400 uppercase">Pricing</p>
-        <h1 className="text-2xl font-semibold text-steel-50">Pick a plan that fits the shop</h1>
-        <p className="mt-1 text-sm text-steel-400">
+        <p className="mt-3 font-mono text-[10px] tracking-[0.18em] text-tech-400 uppercase">Pricing</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-steel-50 sm:text-3xl">
+          Pick a plan that fits the shop
+        </h1>
+        <p className="max-w-lg text-[15px] leading-relaxed text-steel-400">
           Start free. Upgrade when Gus is earning his keep on real machines.
         </p>
       </div>
 
       {cancelled && (
-        <Card className="border-caution-500/40 p-3 text-sm text-caution-500">
+        <Card className="border-caution-500/40 p-4 text-sm text-caution-500">
           Checkout canceled — you can upgrade anytime.
         </Card>
       )}
       {isSubscribed && (
-        <Card accent="tech" className="p-3 text-sm text-steel-200">
+        <Card accent="tech" className="p-4 text-sm text-steel-200">
           You&apos;re on Pro.{' '}
-          <Link to="/account" className="text-tech-400 hover:underline">
+          <Link to="/account" className="font-medium text-tech-400 hover:underline">
             Manage billing
           </Link>
         </Card>
       )}
-      {error && <Card className="border-danger-500/40 p-3 text-sm text-danger-500">{error}</Card>}
+      {error && <Card className="border-danger-500/40 p-4 text-sm text-danger-500">{error}</Card>}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
         {PLANS.map((plan) => (
           <Card
             key={plan.id}
-            accent={plan.highlighted ? 'yellow' : 'tech'}
-            className={`flex flex-col p-5 ${plan.highlighted ? 'ring-1 ring-safety-400/40' : ''}`}
+            accent={plan.highlighted ? 'yellow' : 'none'}
+            className={`flex flex-col p-5 sm:p-6 ${plan.highlighted ? 'ring-1 ring-safety-400/35' : ''}`}
           >
-            <p className="font-mono text-[10px] tracking-widest text-steel-500 uppercase">{plan.name}</p>
-            <p className="mt-2 flex items-baseline gap-1">
-              <span className="text-3xl font-semibold text-steel-50">{plan.priceLabel}</span>
+            <p className="font-mono text-[10px] tracking-[0.16em] text-steel-500 uppercase">{plan.name}</p>
+            <p className="mt-2.5 flex items-baseline gap-1.5">
+              <span className="text-3xl font-semibold tracking-tight text-steel-50">{plan.priceLabel}</span>
               <span className="text-sm text-steel-500">{plan.priceDetail}</span>
             </p>
-            <p className="mt-2 text-sm text-steel-400">{plan.description}</p>
-            <ul className="mt-4 flex-1 space-y-2 text-sm text-steel-200">
+            <p className="mt-2 text-sm leading-relaxed text-steel-400">{plan.description}</p>
+            <ul className="mt-5 flex-1 space-y-2.5 text-sm text-steel-200">
               {plan.features.map((f) => (
-                <li key={f} className="flex gap-2">
-                  <span className="text-tech-400">✓</span>
+                <li key={f} className="flex gap-2.5">
+                  <span className="mt-0.5 text-tech-400" aria-hidden>
+                    ✓
+                  </span>
                   <span>{f}</span>
                 </li>
               ))}
             </ul>
             {plan.id === 'free' ? (
-              <Button
-                variant="secondary"
-                className="mt-5 w-full"
-                onClick={() => navigate('/')}
-              >
+              <Button variant="secondary" className="mt-6 w-full" onClick={() => navigate('/')}>
                 {plan.cta}
               </Button>
             ) : (
-              <Button className="mt-5 w-full" disabled={busy || isSubscribed} onClick={() => void handlePro()}>
+              <Button className="mt-6 w-full" disabled={busy || isSubscribed} onClick={() => void handlePro()}>
                 {isSubscribed ? 'Current plan' : busy ? 'Redirecting…' : plan.cta}
               </Button>
             )}
@@ -110,9 +110,8 @@ export function PricingPage() {
         ))}
       </div>
 
-      <p className="text-center text-xs text-steel-500">
-        Web billing via Stripe. Apple App Store builds will use In-App Purchase when that ships.
-        {' '}
+      <p className="text-center text-xs leading-relaxed text-steel-500">
+        Web billing via Stripe. Apple App Store builds will use In-App Purchase when that ships.{' '}
         <Link to="/privacy" className="text-tech-400 hover:underline">
           Privacy Policy
         </Link>

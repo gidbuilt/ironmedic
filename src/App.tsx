@@ -12,6 +12,7 @@ import { ModeStubPage } from './pages/ModeStubPage'
 import { RepairChatPage } from './pages/RepairChatPage'
 import { ServiceLogPage } from './pages/ServiceLogPage'
 import { PrivacyPage } from './pages/PrivacyPage'
+import { SupportPage } from './pages/SupportPage'
 import { AccountPage } from './pages/AccountPage'
 import { PricingPage } from './pages/PricingPage'
 
@@ -22,6 +23,7 @@ function App() {
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/support" element={<SupportPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>

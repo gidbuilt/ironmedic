@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { SUPPORT_EMAIL } from '../lib/support'
 import { Card } from '../components/ui/Card'
 
 /** Public privacy policy — required for App Store Connect. */
@@ -6,11 +7,11 @@ export function PrivacyPage() {
   return (
     <div className="tech-grid min-h-screen px-4 py-10">
       <div className="mx-auto max-w-2xl space-y-6">
-        <Link to="/" className="text-sm text-steel-400 hover:text-steel-200">
-          &larr; Back to IronMedic
+        <Link to="/" className="im-pill !px-2.5">
+          ← Back to IronMedic
         </Link>
-        <Card accent="tech" className="space-y-4 p-6 text-sm leading-relaxed text-steel-300">
-          <h1 className="text-2xl font-semibold text-steel-50">Privacy Policy</h1>
+        <Card accent="tech" className="fade-up space-y-4 p-6 text-sm leading-relaxed text-steel-300 sm:p-7">
+          <h1 className="text-2xl font-semibold tracking-tight text-steel-50">Privacy Policy</h1>
           <p className="text-steel-500">Last updated: August 2, 2026</p>
 
           <p>
@@ -70,8 +71,18 @@ export function PrivacyPage() {
 
           <h2 className="pt-2 text-base font-semibold text-steel-100">Contact</h2>
           <p>
-            Questions about privacy: use the contact email listed on your App Store listing, or reach the
-            account that publishes IronMedic.
+            Questions about privacy:{' '}
+            <a
+              href={`mailto:${SUPPORT_EMAIL}?subject=IronMedic%20Privacy`}
+              className="text-tech-400 hover:underline"
+            >
+              {SUPPORT_EMAIL}
+            </a>{' '}
+            or visit our{' '}
+            <Link to="/support" className="text-tech-400 hover:underline">
+              Support page
+            </Link>
+            .
           </p>
         </Card>
       </div>

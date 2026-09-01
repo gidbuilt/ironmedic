@@ -38,13 +38,16 @@ export function ManualsSection({ machineId }: { machineId: string }) {
   }
 
   return (
-    <Card className="p-5">
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-          <p className="font-mono text-xs font-semibold tracking-widest text-steel-500 uppercase">Reference material</p>
-          <p className="mt-0.5 font-semibold text-steel-50">Manual</p>
-          <p className="text-sm text-steel-400">
-            Upload the owner's manual for this exact machine — Gus treats it as the most authoritative source.
+    <Card className="p-5 sm:p-6">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <p className="font-mono text-[10px] font-semibold tracking-[0.18em] text-steel-500 uppercase">
+            Reference material
+          </p>
+          <p className="mt-1 font-semibold text-steel-50">Manual</p>
+          <p className="mt-1 text-sm leading-relaxed text-steel-400">
+            Upload the owner&apos;s manual for this exact machine — Gus treats it as the most
+            authoritative source.
           </p>
         </div>
         <input
@@ -60,7 +63,8 @@ export function ManualsSection({ machineId }: { machineId: string }) {
         />
         <Button
           variant="secondary"
-          className="min-h-9 shrink-0 px-3 py-2 text-sm"
+          size="sm"
+          className="shrink-0 self-stretch sm:self-auto"
           disabled={uploading}
           onClick={() => fileInputRef.current?.click()}
         >
@@ -68,23 +72,31 @@ export function ManualsSection({ machineId }: { machineId: string }) {
         </Button>
       </div>
 
-      {error && <p className="text-sm text-danger-500">{error}</p>}
+      {error && <p className="mb-3 text-sm text-danger-500">{error}</p>}
 
       {manuals.length === 0 ? (
-        <p className="text-sm text-steel-500">No manual uploaded yet.</p>
+        <div className="rounded-2xl border border-dashed border-steel-700/80 bg-steel-950/40 px-4 py-6 text-center">
+          <p className="text-sm text-steel-400">No manual uploaded yet</p>
+        </div>
       ) : (
         <ul className="flex flex-col gap-2">
           {manuals.map((m) => (
-            <li key={m.id} className="flex items-center justify-between rounded-xl border border-steel-700 px-3 py-2">
-              <div>
-                <p className="text-sm text-steel-100">{m.filename}</p>
-                <p className={`text-xs ${m.extraction_status === 'ok' ? 'text-safe-500' : 'text-steel-400'}`}>
+            <li
+              key={m.id}
+              className="flex items-center justify-between gap-3 rounded-2xl border border-steel-700/70 bg-steel-950/40 px-3.5 py-3"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-steel-100">{m.filename}</p>
+                <p
+                  className={`mt-0.5 text-xs ${m.extraction_status === 'ok' ? 'text-safe-500' : 'text-steel-400'}`}
+                >
                   {STATUS_LABEL[m.extraction_status]}
                 </p>
               </div>
               <Button
                 variant="ghost"
-                className="min-h-8 px-2 py-1 text-xs text-danger-500"
+                size="sm"
+                className="shrink-0 text-danger-500 hover:bg-danger-500/10"
                 onClick={async () => {
                   await deleteManual(m)
                   setManuals((prev) => prev.filter((x) => x.id !== m.id))
@@ -97,9 +109,9 @@ export function ManualsSection({ machineId }: { machineId: string }) {
         </ul>
       )}
       {manuals.some((m) => m.extraction_status === 'empty_scanned_pdf') && (
-        <p className="mt-3 text-xs text-steel-500">
-          This looks like a scanned-image PDF rather than real text, so Gus can't read it yet. A text-based PDF
-          from the manufacturer's site usually works better than a photocopy scan.
+        <p className="mt-3 text-xs leading-relaxed text-steel-500">
+          This looks like a scanned-image PDF rather than real text, so Gus can&apos;t read it yet. A
+          text-based PDF from the manufacturer&apos;s site usually works better than a photocopy scan.
         </p>
       )}
     </Card>

@@ -52,28 +52,28 @@ function MachineNameplate({
   }
 
   return (
-    <Card className="h-full overflow-hidden p-0">
+    <Card className="h-full overflow-hidden p-0 transition-colors hover:border-steel-600/90">
       <div className="flex h-full items-stretch">
-        <div className={`w-1.5 shrink-0 ${isUnidentified ? 'bg-tech-400/50' : 'bg-safety-400'}`} />
+        <div className={`w-1 shrink-0 ${isUnidentified ? 'bg-tech-400/55' : 'bg-safety-400'}`} />
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="relative min-w-0 flex-1">
             <Link
               to={`/machines/${machine.id}`}
-              className="block min-w-0 flex-1 px-3 py-3 pr-10 transition-colors hover:bg-steel-800/60"
+              className="block min-w-0 flex-1 px-3.5 py-3.5 pr-11 transition-colors hover:bg-steel-800/50"
             >
               {isUnidentified ? (
                 <>
-                  <p className="truncate text-[10px] font-medium tracking-wide text-tech-400 uppercase">
+                  <p className="truncate text-[10px] font-medium tracking-[0.14em] text-tech-400 uppercase">
                     Identifying…
                   </p>
-                  <p className="truncate text-sm font-semibold text-steel-50">{machine.name}</p>
+                  <p className="mt-0.5 truncate text-sm font-semibold text-steel-50">{machine.name}</p>
                 </>
               ) : (
                 <>
-                  <p className="truncate text-[10px] font-medium tracking-wide text-steel-500 uppercase">
+                  <p className="truncate text-[10px] font-medium tracking-[0.14em] text-steel-500 uppercase">
                     {machine.make}
                   </p>
-                  <p className="truncate text-sm font-semibold text-steel-50">{machine.model}</p>
+                  <p className="mt-0.5 truncate text-sm font-semibold text-steel-50">{machine.model}</p>
                 </>
               )}
               {hasCustomName && (
@@ -85,14 +85,14 @@ function MachineNameplate({
               aria-label={`Delete ${machine.name}`}
               disabled={deleting}
               onClick={(e) => void handleDelete(e)}
-              className="absolute top-2 right-2 rounded-lg p-1.5 text-danger-500/80 hover:bg-danger-500/15 hover:text-danger-500 disabled:opacity-50"
+              className="absolute top-2.5 right-2.5 rounded-xl p-1.5 text-steel-500 transition-colors hover:bg-danger-500/15 hover:text-danger-500 disabled:opacity-50"
             >
               <TrashIcon className="h-4 w-4" />
             </button>
           </div>
           <Link
             to={`/machines/${machine.id}/repair`}
-            className="border-t border-steel-800 px-3 py-2 text-xs font-medium text-tech-400 transition-colors hover:bg-steel-800/60 hover:text-tech-300"
+            className="border-t border-steel-800/80 px-3.5 py-2.5 text-xs font-medium text-tech-400 transition-colors hover:bg-steel-800/50 hover:text-tech-300"
           >
             Talk to Gus →
           </Link>
@@ -121,42 +121,49 @@ export function FleetPage() {
   }, [])
 
   return (
-    <div className="space-y-4 pb-8">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <Link to="/" className="text-sm text-steel-400 hover:text-steel-200">
-            &larr; Back to Gus
+    <div className="fade-up space-y-5 pb-10">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="space-y-1.5">
+          <Link to="/" className="im-pill !px-2.5">
+            ← Back to Gus
           </Link>
-          <p className="mt-2 text-[11px] font-semibold tracking-wide text-steel-500 uppercase">Fleet</p>
-          <h1 className="text-xl font-semibold text-steel-50">Your machines</h1>
+          <p className="mt-3 font-mono text-[10px] tracking-[0.18em] text-steel-500 uppercase">Fleet</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-steel-50">Your machines</h1>
         </div>
         <Link to="/machines/new">
-          <Button variant="secondary" className="min-h-10 px-3 py-2 text-sm">
+          <Button variant="secondary" size="sm">
             + Add machine
           </Button>
         </Link>
       </div>
 
       {error && (
-        <Card className="border-danger-500/40 p-3 text-sm text-danger-500">
+        <Card className="border-danger-500/40 p-4 text-sm text-danger-500">
           Couldn&apos;t load machines: {error}
         </Card>
       )}
 
-      {machines === null && !error && <p className="text-sm text-steel-400">Loading…</p>}
+      {machines === null && !error && (
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <div className="im-skeleton h-24 rounded-2xl" />
+          <div className="im-skeleton h-24 rounded-2xl" />
+        </div>
+      )}
 
       {machines?.length === 0 && (
-        <p className="text-sm text-steel-400">
-          No machines yet —{' '}
-          <Link to="/machines/new" className="text-tech-400 hover:underline">
-            add a machine
-          </Link>{' '}
-          or ask Gus from the home screen.
-        </p>
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium text-steel-100">No machines yet</p>
+          <p className="mt-1.5 text-sm text-steel-400">
+            <Link to="/machines/new" className="font-medium text-tech-400 hover:underline">
+              Add a machine
+            </Link>{' '}
+            or ask Gus from the home screen.
+          </p>
+        </Card>
       )}
 
       {machines && machines.length > 0 && (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           {machines.map((machine) => (
             <MachineNameplate
               key={machine.id}

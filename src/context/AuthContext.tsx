@@ -1,6 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
+import { withAuthTimeout } from '../lib/authTimeout'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
+import { isTransientNetworkError } from '../lib/networkError'
+import { initNativeAppLifecycle } from '../lib/nativeAppLifecycle'
 import type { Profile } from '../types/database'
 
 interface AuthContextValue {
@@ -14,6 +17,8 @@ interface AuthContextValue {
   /** Set when anonymous bootstrap failed (e.g. provider disabled in Supabase). */
   authError: string | null
   refreshProfile: () => Promise<void>
+  /** Soft recover after screen lock / background — does not wipe session on network blips. */
+  recoverSession: () => Promise<void>
   signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>
   signUp: (email: string, password: string) => Promise<{ error: string | null }>
   /** Convert a guest session into a permanent email account (keeps data). */
@@ -93,7 +98,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!cancelled) {
           setSession(null)
           setProfile(null)
-          setAuthError(err instanceof Error ? err.message : 'Could not start a session.')
+          const raw = err instanceof Error ? err.message : 'Could not start a session.'
+          setAuthError(
+            isTransientNetworkError(err)
+              ? 'Connection issue. Check your network and try again.'
+              : raw,
+          )
           setLoading(false)
         }
       }
@@ -102,8 +112,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void ensureSession()
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      // Ignore null flashes from flaky network while a session is already live.
+      if (!nextSession) return
       setSession(nextSession)
-      void loadProfile(nextSession?.user?.id)
+      void loadProfile(nextSession.user.id)
     })
 
     return () => {
@@ -111,6 +123,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       subscription.subscription.unsubscribe()
     }
   }, [loadProfile])
+
+  const recoverSession = useCallback(async () => {
+    if (!isSupabaseConfigured) return
+    try {
+      const { data: refreshed } = await supabase.auth.refreshSession()
+      if (refreshed.session) {
+        setSession(refreshed.session)
+        await loadProfile(refreshed.session.user.id)
+        setAuthError(null)
+        return
+      }
+      const { data: existing } = await supabase.auth.getSession()
+      if (existing.session) {
+        setSession(existing.session)
+        await loadProfile(existing.session.user.id)
+        setAuthError(null)
+        return
+      }
+      const { data: anon, error } = await supabase.auth.signInAnonymously()
+      if (anon.session) {
+        setSession(anon.session)
+        await loadProfile(anon.session.user.id)
+        setAuthError(null)
+        return
+      }
+      if (error && !isTransientNetworkError(error)) {
+        setAuthError(error.message)
+      }
+    } catch (err) {
+      // Keep whatever session we have; transient offline while locked is fine.
+      if (!isTransientNetworkError(err)) {
+        console.error('[auth] recoverSession failed', err)
+      }
+    }
+  }, [loadProfile])
+
+  useEffect(() => {
+    void initNativeAppLifecycle(() => recoverSession())
+  }, [recoverSession])
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -124,22 +175,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async refreshProfile() {
         await loadProfile(session?.user?.id)
       },
+      recoverSession,
       async signInWithPassword(email, password) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
-        return { error: error?.message ?? null }
+        try {
+          const { error } = await withAuthTimeout(
+            supabase.auth.signInWithPassword({ email: email.trim(), password }),
+          )
+          return { error: error?.message ?? null }
+        } catch (err) {
+          return { error: err instanceof Error ? err.message : 'Could not sign in.' }
+        }
       },
       async signUp(email, password) {
-        const { error } = await supabase.auth.signUp({ email, password })
-        return { error: error?.message ?? null }
+        try {
+          const { error } = await withAuthTimeout(
+            supabase.auth.signUp({
+              email: email.trim(),
+              password,
+              options: { emailRedirectTo: `${window.location.origin}/login` },
+            }),
+          )
+          return { error: error?.message ?? null }
+        } catch (err) {
+          return { error: err instanceof Error ? err.message : 'Could not create account.' }
+        }
       },
       async upgradeGuestAccount(email, password) {
-        const { error } = await supabase.auth.updateUser({ email, password })
-        if (error) return { error: error.message }
-        // Refresh session so is_anonymous clears after conversion.
-        const { data } = await supabase.auth.getSession()
-        setSession(data.session)
-        await loadProfile(data.session?.user?.id)
-        return { error: null }
+        try {
+          const { error } = await withAuthTimeout(
+            supabase.auth.updateUser({ email: email.trim(), password }),
+          )
+          if (error) return { error: error.message }
+          // Refresh session so is_anonymous clears after conversion.
+          const { data } = await withAuthTimeout(supabase.auth.getSession())
+          if (data.session) {
+            setSession(data.session)
+            try {
+              await loadProfile(data.session.user.id)
+            } catch (profileErr) {
+              console.warn('[auth] profile refresh after upgrade failed', profileErr)
+            }
+          }
+          return { error: null }
+        } catch (err) {
+          return { error: err instanceof Error ? err.message : 'Could not save account.' }
+        }
       },
       async signInAnonymously() {
         const { data, error } = await supabase.auth.signInAnonymously()
@@ -176,7 +256,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthError(null)
       },
     }),
-    [session, profile, loading, authError, loadProfile],
+    [session, profile, loading, authError, loadProfile, recoverSession],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

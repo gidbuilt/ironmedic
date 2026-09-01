@@ -103,7 +103,7 @@ Optional secrets (all have sensible defaults):
 | Secret | Default | Purpose |
 | --- | --- | --- |
 | `ANTHROPIC_MODEL` | `claude-opus-4-8` | Swap for a cheaper/faster model without a code change |
-| `FREE_DIAGNOSIS_LIMIT` | `3` | Free diagnoses per account before the paywall response (HTTP 402) kicks in — real enforcement of this cap requires Stripe subscription wiring, which is Phase 6 |
+| `FREE_MESSAGE_LIMIT` | `20` | Lifetime free user messages per account (`profiles.gus_messages_used`; clearing chats does not reset) before the paywall (HTTP 402) |
 | `ALLOWED_ORIGIN` | `*` | Lock CORS down to your deployed frontend origin in production |
 
 `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are

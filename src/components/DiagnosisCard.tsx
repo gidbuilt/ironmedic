@@ -76,27 +76,30 @@ export function DiagnosisCard({
 
   return (
     <Card accent="yellow" className="p-5">
-      <div className="mb-3 flex items-center justify-between gap-2 border-b border-steel-800 pb-3">
-        <span className="font-mono text-xs font-semibold tracking-widest text-safety-400 uppercase">
+      <div className="mb-3.5 flex items-center justify-between gap-2 border-b border-steel-800/80 pb-3">
+        <span className="font-mono text-[10px] font-semibold tracking-[0.16em] text-safety-400 uppercase">
           Diagnosis Report
         </span>
         <span className="font-mono text-xs text-steel-500">{diagnosis.tag_number}</span>
       </div>
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <span className={`rounded-xl border px-2.5 py-1 text-xs font-semibold ${SAFE_STYLES[diagnosis.safe_to_operate]}`}>
+        <span
+          className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${SAFE_STYLES[diagnosis.safe_to_operate]}`}
+        >
           {SAFE_LABEL[diagnosis.safe_to_operate]}
         </span>
-        <span className="rounded-xl border border-steel-600 bg-steel-800 px-2.5 py-1 font-mono text-xs text-steel-300">
+        <span className="rounded-full border border-steel-600/80 bg-steel-800/80 px-2.5 py-1 font-mono text-[11px] text-steel-300">
           Confidence: {diagnosis.confidence}
         </span>
       </div>
 
-      <p className="font-semibold text-steel-50">{diagnosis.summary}</p>
+      <p className="text-[15px] font-semibold leading-snug text-steel-50">{diagnosis.summary}</p>
 
       {isNoFault ? (
-        <p className="mt-3 text-steel-300">
-          Verified normal operation — no fault found. Sometimes the machine really is working the way it's supposed to.
+        <p className="mt-3 text-sm leading-relaxed text-steel-300">
+          Verified normal operation — no fault found. Sometimes the machine really is working the way
+          it&apos;s supposed to.
         </p>
       ) : (
         <>
@@ -105,7 +108,7 @@ export function DiagnosisCard({
               <p className="text-sm font-semibold text-steel-300">Ranked likely causes</p>
               <ol className="mt-1.5 flex flex-col gap-1.5">
                 {diagnosis.ranked_causes.map((c, i) => (
-                  <li key={i} className="text-sm text-steel-200">
+                  <li key={i} className="text-sm leading-relaxed text-steel-200">
                     <span className="font-medium">{c.cause}</span>{' '}
                     <span className="text-steel-400">
                       ({c.likelihood}
@@ -135,7 +138,7 @@ export function DiagnosisCard({
               <p className="text-sm font-semibold text-steel-300">Repair procedure</p>
               <ol className="mt-1.5 flex flex-col gap-1.5">
                 {diagnosis.repair_steps.map((s, i) => (
-                  <li key={i} className="flex gap-2 text-sm text-steel-200">
+                  <li key={i} className="flex gap-2 text-sm leading-relaxed text-steel-200">
                     <span className="shrink-0 font-mono text-tech-400">{i + 1}.</span>
                     <span>{s}</span>
                   </li>
@@ -147,11 +150,11 @@ export function DiagnosisCard({
       )}
 
       {diagnosis.verification_steps?.length > 0 && (
-        <div className="mt-4 rounded-xl border border-tech-400/30 bg-tech-400/5 p-3">
+        <div className="mt-4 rounded-2xl border border-tech-400/30 bg-tech-400/5 p-3.5">
           <p className="text-sm font-semibold text-tech-300">Verify the fix</p>
           <ol className="mt-1.5 flex flex-col gap-1.5">
             {diagnosis.verification_steps.map((s, i) => (
-              <li key={i} className="flex gap-2 text-sm text-steel-200">
+              <li key={i} className="flex gap-2 text-sm leading-relaxed text-steel-200">
                 <span className="shrink-0 font-mono text-tech-400">{i + 1}.</span>
                 <span>{s}</span>
               </li>
@@ -160,12 +163,13 @@ export function DiagnosisCard({
         </div>
       )}
 
-      <p className="mt-4 text-xs text-steel-500">
-        This is AI-assisted guidance, not a substitute for a qualified in-person inspection. Default to caution.
+      <p className="mt-4 text-xs leading-relaxed text-steel-500">
+        This is AI-assisted guidance, not a substitute for a qualified in-person inspection. Default to
+        caution.
       </p>
 
       <div className="mt-4">
-        <Button variant="secondary" className="min-h-9 px-3 py-2 text-sm" onClick={handleCopy}>
+        <Button variant="secondary" size="sm" onClick={handleCopy}>
           Copy / share report
         </Button>
       </div>
