@@ -1,33 +1,45 @@
 # IronMedic billing (Stripe)
 
 ## Plans
-- **Free** — 20 messages with Gus per account (`FREE_MESSAGE_LIMIT`), tracked on
-  `profiles.gus_messages_used` (lifetime; clearing chats does **not** reset it)
-- **Pro** — $12 CAD/month, unlimited messages (`profiles.is_subscribed = true`)
+
+| Tier | Price | What you get |
+|------|-------|--------------|
+| **Basic** | $14 CAD/mo | 75 diagnostics/mo, live web intelligence, fleet |
+| **Pro** | $24 CAD/mo | Unlimited text, live web intelligence, fleet, manuals |
+| **Premium** | $39 CAD/mo | Everything in Pro + photo/video vision (Sonnet) |
+
+There is **no free tier**. New subscribers get a **7-day free trial** after adding a card in Stripe Checkout.
+
+Paid tier is stored on `profiles.subscription_tier` (`free` = no active sub, `basic`, `pro`, `premium`).
+
+## AI models (Edge Function secrets)
+
+- **Standard text** (all paid tiers, text-only turns): `ANTHROPIC_MODEL_STANDARD` — default `claude-haiku-4-20250514`
+- **Vision** (Premium photo turns): `ANTHROPIC_MODEL_PREMIUM` — default `claude-sonnet-4-20250514`
+
+## Usage limits
+
+- Basic monthly cap: `BASIC_MONTHLY_MESSAGE_LIMIT` (default **75**), resets each calendar month
+- Pro & Premium: unlimited text diagnostics
+- Enforced in `try_consume_gus_message` (migrations `0011`, `0012`)
 
 ## One-time Stripe setup
-1. Create a Stripe account → Product **IronMedic Pro** → recurring Price **$12 CAD/month**.
-2. Copy the Price ID (`price_...`).
+
+1. Create three recurring prices in Stripe:
+   - **Basic** — $14 CAD/month
+   - **Pro** — $24 CAD/month
+   - **Premium** — $39 CAD/month
+2. Apply migrations `0010`, `0011`, and `0012`.
 3. Set Edge secrets:
    ```bash
-   npx supabase secrets set STRIPE_SECRET_KEY=sk_test_...
+   npx supabase secrets set STRIPE_PRICE_BASIC=price_...
    npx supabase secrets set STRIPE_PRICE_PRO=price_...
+   npx supabase secrets set STRIPE_PRICE_PREMIUM=price_...
+   npx supabase secrets set TRIAL_DAYS=7
+   npx supabase secrets set BASIC_MONTHLY_MESSAGE_LIMIT=75
    ```
-4. Deploy functions:
-   ```bash
-   npx supabase functions deploy create-checkout
-   npx supabase functions deploy create-portal
-   # Stripe cannot send a Supabase JWT — must disable gateway JWT checks
-   npx supabase functions deploy stripe-webhook --no-verify-jwt
-   npx supabase functions deploy gus-chat
-   ```
-   (`supabase/config.toml` sets `verify_jwt = false` for `stripe-webhook`.)
-5. Stripe Dashboard → Developers → Webhooks → Add endpoint:
-   - URL: `https://<project-ref>.supabase.co/functions/v1/stripe-webhook`
-   - Events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
-   - Copy signing secret → `npx supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_...`
-6. Stripe Customer Portal: enable in Dashboard (Settings → Billing → Customer portal).
+4. Deploy `create-checkout`, `stripe-webhook`, and `gus-chat`.
 
-## App routes
-- `/pricing` — plan comparison + Upgrade
-- `/account` — plan status, guest→email upgrade, manage billing, delete data
+## Upgrades
+
+Checkout supports upgrades only (Basic → Pro → Premium). Downgrades use the Stripe Customer Portal.

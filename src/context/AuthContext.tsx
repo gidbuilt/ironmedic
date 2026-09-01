@@ -5,6 +5,7 @@ import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { isTransientNetworkError } from '../lib/networkError'
 import { initNativeAppLifecycle } from '../lib/nativeAppLifecycle'
 import type { Profile } from '../types/database'
+import { isPaidTier, normalizeSubscriptionTier, type SubscriptionTier } from '../lib/subscription'
 
 interface AuthContextValue {
   session: Session | null
@@ -14,15 +15,20 @@ interface AuthContextValue {
   /** True when the current session is a silent guest (no email). */
   isAnonymous: boolean
   isSubscribed: boolean
+  subscriptionTier: SubscriptionTier
+  isPremium: boolean
   /** Set when anonymous bootstrap failed (e.g. provider disabled in Supabase). */
   authError: string | null
   refreshProfile: () => Promise<void>
   /** Soft recover after screen lock / background — does not wipe session on network blips. */
   recoverSession: () => Promise<void>
   signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>
-  signUp: (email: string, password: string) => Promise<{ error: string | null }>
+  signUp: (email: string, password: string) => Promise<{ error: string | null; needsEmailConfirmation: boolean }>
   /** Convert a guest session into a permanent email account (keeps data). */
-  upgradeGuestAccount: (email: string, password: string) => Promise<{ error: string | null }>
+  upgradeGuestAccount: (
+    email: string,
+    password: string,
+  ) => Promise<{ error: string | null; needsEmailConfirmation: boolean }>
   signInAnonymously: () => Promise<{ error: string | null }>
   resetPasswordForEmail: (email: string) => Promise<{ error: string | null }>
   updatePassword: (password: string) => Promise<{ error: string | null }>
@@ -44,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const { data } = await supabase
       .from('profiles')
-      .select('id, is_subscribed, stripe_customer_id, created_at')
+      .select('id, is_subscribed, subscription_tier, stripe_customer_id, created_at')
       .eq('id', userId)
       .maybeSingle()
     setProfile((data as Profile | null) ?? null)
@@ -170,7 +176,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       loading,
       isAnonymous: Boolean(session?.user?.is_anonymous),
-      isSubscribed: Boolean(profile?.is_subscribed),
+      isSubscribed: isPaidTier(normalizeSubscriptionTier(profile?.subscription_tier)),
+      subscriptionTier: normalizeSubscriptionTier(profile?.subscription_tier),
+      isPremium: normalizeSubscriptionTier(profile?.subscription_tier) === 'premium',
       authError,
       async refreshProfile() {
         await loadProfile(session?.user?.id)
@@ -188,16 +196,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       async signUp(email, password) {
         try {
-          const { error } = await withAuthTimeout(
+          const { data, error } = await withAuthTimeout(
             supabase.auth.signUp({
               email: email.trim(),
               password,
               options: { emailRedirectTo: `${window.location.origin}/login` },
             }),
           )
-          return { error: error?.message ?? null }
+          if (error) return { error: error.message, needsEmailConfirmation: false }
+          if (data.session) {
+            setSession(data.session)
+            try {
+              await loadProfile(data.session.user.id)
+            } catch (profileErr) {
+              console.warn('[auth] profile refresh after signUp failed', profileErr)
+            }
+          }
+          return { error: null, needsEmailConfirmation: !data.session }
         } catch (err) {
-          return { error: err instanceof Error ? err.message : 'Could not create account.' }
+          return {
+            error: err instanceof Error ? err.message : 'Could not create account.',
+            needsEmailConfirmation: false,
+          }
         }
       },
       async upgradeGuestAccount(email, password) {
@@ -205,20 +225,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const { error } = await withAuthTimeout(
             supabase.auth.updateUser({ email: email.trim(), password }),
           )
-          if (error) return { error: error.message }
-          // Refresh session so is_anonymous clears after conversion.
-          const { data } = await withAuthTimeout(supabase.auth.getSession())
-          if (data.session) {
-            setSession(data.session)
+          if (error) return { error: error.message, needsEmailConfirmation: false }
+          const { data: sessionData } = await withAuthTimeout(supabase.auth.getSession())
+          if (sessionData.session) {
+            setSession(sessionData.session)
             try {
-              await loadProfile(data.session.user.id)
+              await loadProfile(sessionData.session.user.id)
             } catch (profileErr) {
               console.warn('[auth] profile refresh after upgrade failed', profileErr)
             }
           }
-          return { error: null }
+          const needsEmailConfirmation = Boolean(
+            sessionData.session?.user.email && !sessionData.session.user.email_confirmed_at,
+          )
+          return { error: null, needsEmailConfirmation }
         } catch (err) {
-          return { error: err instanceof Error ? err.message : 'Could not save account.' }
+          return {
+            error: err instanceof Error ? err.message : 'Could not save account.',
+            needsEmailConfirmation: false,
+          }
         }
       },
       async signInAnonymously() {

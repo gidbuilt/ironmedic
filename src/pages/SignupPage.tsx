@@ -36,10 +36,11 @@ export function SignupPage() {
         return
       }
 
-      if (forUpgrade || next.startsWith('/pricing')) {
-        navigate(next.startsWith('/') ? next : '/pricing', { replace: true })
+      if (!result.needsEmailConfirmation) {
+        navigate(next.startsWith('/') ? next : '/', { replace: true })
         return
       }
+
       setDone(true)
     } finally {
       setSubmitting(false)

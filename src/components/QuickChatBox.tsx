@@ -1,13 +1,10 @@
 import { useState, type FormEvent, type KeyboardEvent } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { createMachine } from '../lib/machines'
+import { createQuickChatMachine } from '../lib/quickChat'
 import { Button } from './ui/Button'
+import { TrialPrompt } from './TrialPrompt'
 
-/** Sentinel nickname for machines created from the dashboard quick-chat box,
- * before Gus has extracted real make/model from the conversation. The
- * gus-chat Edge Function checks for this exact value to know it's safe to
- * overwrite the name once it identifies the equipment. */
-export const QUICK_CHAT_PLACEHOLDER_NAME = 'New machine'
+export { QUICK_CHAT_PLACEHOLDER_NAME } from '../lib/quickChat'
 
 type QuickChatBoxProps = {
   /** When set, stay on the dashboard and open an embedded chat dock. */
@@ -19,10 +16,14 @@ type QuickChatBoxProps = {
  * via `onSessionStart`.
  */
 export function QuickChatBox({ onSessionStart }: QuickChatBoxProps) {
-  const { user } = useAuth()
+  const { user, isSubscribed } = useAuth()
   const [question, setQuestion] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  if (!isSubscribed) {
+    return <TrialPrompt className="shrink-0" />
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -31,13 +32,7 @@ export function QuickChatBox({ onSessionStart }: QuickChatBoxProps) {
     setSubmitting(true)
     setError(null)
     try {
-      const machine = await createMachine(user.id, {
-        name: QUICK_CHAT_PLACEHOLDER_NAME,
-        make: '',
-        model: '',
-        serial_number: null,
-        hours: null,
-      })
+      const machine = await createQuickChatMachine(user.id)
       setQuestion('')
       onSessionStart?.(machine.id, text)
     } catch (err) {

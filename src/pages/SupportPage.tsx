@@ -40,7 +40,7 @@ export function SupportPage() {
             </li>
             <li>
               <strong className="font-medium text-steel-200">Free tier:</strong> Each account includes a
-              limited number of Gus messages. Upgrade to Pro from Pricing in the app menu.
+              Pro and Premium plans include a 7-day free trial. See Pricing in the app menu.
             </li>
             <li>
               <strong className="font-medium text-steel-200">Delete my data:</strong> Account → Delete my

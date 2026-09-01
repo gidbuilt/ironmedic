@@ -3,7 +3,8 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { openBillingPortal } from '../lib/billing'
-import { FREE_MESSAGE_LIMIT } from '../lib/plans'
+import { BASIC_MONTHLY_MESSAGE_LIMIT } from '../lib/plans'
+import { tierLabel } from '../lib/subscription'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
@@ -12,7 +13,8 @@ import { Input } from '../components/ui/Input'
  * Account: plan status, guest → email upgrade, billing portal, delete data.
  */
 export function AccountPage() {
-  const { user, isAnonymous, isSubscribed, refreshProfile, signOut, upgradeGuestAccount } = useAuth()
+  const { user, isAnonymous, isSubscribed, subscriptionTier, refreshProfile, signOut, upgradeGuestAccount } =
+    useAuth()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const [busy, setBusy] = useState(false)
@@ -68,13 +70,15 @@ export function AccountPage() {
     setError(null)
     setBusy(true)
     try {
-      const { error } = await upgradeGuestAccount(upgradeEmail.trim(), upgradePassword)
+      const { error, needsEmailConfirmation } = await upgradeGuestAccount(upgradeEmail.trim(), upgradePassword)
       if (error) {
         setError(error)
         return
       }
       setUpgradeMsg(
-        'Account saved. If email confirmation is required, check your inbox, then sign in with your new credentials.',
+        needsEmailConfirmation
+          ? 'Account saved. Check your inbox to confirm your email, then sign in.'
+          : 'Account saved — you’re signed in with your new credentials.',
       )
     } finally {
       setBusy(false)
@@ -94,7 +98,7 @@ export function AccountPage() {
   }
 
   return (
-    <div className="fade-up mx-auto max-w-lg space-y-5 pb-10">
+    <div className="fade-up mx-auto min-h-0 max-w-lg flex-1 space-y-5 overflow-y-auto pb-6">
       <div className="space-y-1.5">
         <Link to="/" className="im-pill !px-2.5">
           ← Back
@@ -112,20 +116,40 @@ export function AccountPage() {
         <div className="rounded-2xl border border-steel-700/80 bg-steel-950/50 px-4 py-4">
           <p className="font-mono text-[10px] tracking-[0.16em] text-steel-500 uppercase">Plan</p>
           <p className="mt-1.5 text-xl font-semibold tracking-tight text-steel-50">
-            {isSubscribed ? 'Pro' : 'Free'}
-            {!isSubscribed && (
+            {tierLabel(subscriptionTier)}
+            {subscriptionTier === 'free' && (
+              <span className="ml-2 text-sm font-normal text-steel-400">· trial not started</span>
+            )}
+            {subscriptionTier === 'basic' && (
               <span className="ml-2 text-sm font-normal text-steel-400">
-                · {FREE_MESSAGE_LIMIT} messages included
+                · {BASIC_MONTHLY_MESSAGE_LIMIT} diagnostics / month
               </span>
+            )}
+            {subscriptionTier === 'pro' && (
+              <span className="ml-2 text-sm font-normal text-steel-400">· unlimited text</span>
             )}
           </p>
           {params.get('checkout') === 'success' && (
-            <p className="mt-2 text-sm text-safe-500">Payment received — Pro unlocks within a minute.</p>
+            <p className="mt-2 text-sm text-safe-500">Payment received — your plan unlocks within a minute.</p>
           )}
           <div className="mt-4 flex flex-wrap gap-2">
             {!isSubscribed && (
               <Link to="/pricing">
-                <Button size="sm">Upgrade to Pro</Button>
+                <Button size="sm">Start free trial</Button>
+              </Link>
+            )}
+            {subscriptionTier === 'basic' && (
+              <Link to="/pricing">
+                <Button size="sm" variant="secondary">
+                  Upgrade to Pro
+                </Button>
+              </Link>
+            )}
+            {subscriptionTier === 'pro' && (
+              <Link to="/pricing">
+                <Button size="sm" variant="secondary">
+                  Upgrade to Premium
+                </Button>
               </Link>
             )}
             {isSubscribed && (
@@ -145,7 +169,7 @@ export function AccountPage() {
           <form onSubmit={handleUpgradeGuest} className="space-y-3 border-t border-steel-800/80 pt-5">
             <p className="text-sm font-semibold text-steel-100">Save this account</p>
             <p className="text-sm leading-relaxed text-steel-500">
-              Add email and password so your machines and chats stay with you — required before Pro
+              Add email and password so your machines and chats stay with you — required before paid
               checkout.
             </p>
             <Input

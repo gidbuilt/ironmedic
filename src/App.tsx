@@ -5,6 +5,7 @@ import { LoginPage } from './pages/LoginPage'
 import { SignupPage } from './pages/SignupPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { DashboardPage } from './pages/DashboardPage'
+import { ChatPage } from './pages/ChatPage'
 import { FleetPage } from './pages/FleetPage'
 import { NewMachinePage } from './pages/NewMachinePage'
 import { MachineDetailPage } from './pages/MachineDetailPage'
@@ -28,6 +29,7 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/chat" element={<ChatPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/machines" element={<FleetPage />} />

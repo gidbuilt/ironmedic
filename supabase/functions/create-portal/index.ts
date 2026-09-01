@@ -40,7 +40,7 @@ Deno.serve(async (req: Request) => {
 
   if (!profile?.stripe_customer_id) {
     return jsonResponse(
-      { error: 'no_customer', message: 'No billing customer on file. Upgrade to Pro first.' },
+      { error: 'no_customer', message: 'No billing customer on file. Start a trial from Pricing first.' },
       400,
     )
   }

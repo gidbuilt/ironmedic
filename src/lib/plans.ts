@@ -1,12 +1,14 @@
 /** Product plans shown in pricing UI. Stripe price IDs come from env. */
 
-/** Free-tier cap: user chat messages (sends) before Pro is required. */
-export const FREE_MESSAGE_LIMIT = 20
+import type { SubscriptionTier } from './subscription'
 
-/** @deprecated Use FREE_MESSAGE_LIMIT — kept for older imports. */
-export const FREE_DIAGNOSIS_LIMIT = FREE_MESSAGE_LIMIT
+/** Card-on-file trial length (days) for new subscribers via Stripe Checkout. */
+export const TRIAL_DAYS = 7
 
-export type PlanId = 'free' | 'pro'
+/** Basic tier: text diagnostics per calendar month. */
+export const BASIC_MONTHLY_MESSAGE_LIMIT = 75
+
+export type PlanId = Exclude<SubscriptionTier, 'free'>
 
 export type Plan = {
   id: PlanId
@@ -21,32 +23,48 @@ export type Plan = {
 
 export const PLANS: Plan[] = [
   {
-    id: 'free',
-    name: 'Free',
-    priceLabel: '$0',
-    priceDetail: 'to start',
-    description: 'Try Gus on a couple of real jobs before you commit.',
+    id: 'basic',
+    name: 'Basic',
+    priceLabel: '$14',
+    priceDetail: 'CAD / month',
+    description: 'Light shop use with a monthly text allowance.',
     features: [
-      `${FREE_MESSAGE_LIMIT} free messages with Gus`,
-      'Photo attachments',
-      'Machine history on this account',
-      'No credit card required',
+      `${BASIC_MONTHLY_MESSAGE_LIMIT} text diagnostics per month`,
+      '7-day free trial · card required',
+      'Live web & forum intelligence for your exact make & model',
+      'Full fleet & service log',
+      'Standard text model (Haiku)',
     ],
-    cta: 'Continue free',
+    cta: 'Start 7-day free trial',
   },
   {
     id: 'pro',
     name: 'Pro',
-    priceLabel: '$12',
+    priceLabel: '$24',
     priceDetail: 'CAD / month',
-    description: 'Unlimited diagnostic chats with Gus for your fleet.',
+    description: 'Unlimited text diagnostics for everyday shop work.',
     features: [
-      'Unlimited messages with Gus',
+      'Unlimited text diagnostics',
+      '7-day free trial · card required',
+      'Live web & forum intelligence for your exact make & model',
       'Full fleet & service log',
-      'Manual uploads for each machine',
-      'Priority access as we ship new modes',
+      'Manual uploads per machine',
     ],
     highlighted: true,
-    cta: 'Upgrade to Pro',
+    cta: 'Start 7-day free trial',
+  },
+  {
+    id: 'premium',
+    name: 'Premium',
+    priceLabel: '$39',
+    priceDetail: 'CAD / month',
+    description: 'Unlimited text plus photo and video analysis when you need Gus to see the problem.',
+    features: [
+      'Everything in Pro',
+      'Photo attachments in chat',
+      'Video frame analysis (when enabled)',
+      'Vision-grade model for media turns',
+    ],
+    cta: 'Start 7-day free trial',
   },
 ]

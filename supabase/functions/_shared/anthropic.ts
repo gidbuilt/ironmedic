@@ -21,11 +21,12 @@ export async function callClaudeStream(params: {
   messages: ClaudeMessage[]
   maxTokens?: number
   enableWebSearch?: boolean
+  model?: string
 }): Promise<Response> {
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not configured on this Edge Function')
 
-  const model = Deno.env.get('ANTHROPIC_MODEL') || DEFAULT_MODEL
+  const model = params.model ?? Deno.env.get('ANTHROPIC_MODEL') ?? DEFAULT_MODEL
 
   const body: Record<string, unknown> = {
     model,

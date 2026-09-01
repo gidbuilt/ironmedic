@@ -147,8 +147,10 @@ export type CasePrecedent = {
 export type Profile = {
   id: string
   is_subscribed: boolean
+  subscription_tier: 'free' | 'basic' | 'pro' | 'premium'
   stripe_customer_id: string | null
   gus_messages_used: number
+  gus_messages_period_start: string
   created_at: string
 }
 
@@ -225,11 +227,14 @@ export type Database = {
         Returns: undefined
       }
       try_consume_gus_message: {
-        Args: { p_limit: number }
+        Args: { p_basic_monthly_limit: number }
         Returns: {
           allowed: boolean
           messages_used: number
+          messages_limit: number | null
           is_subscribed: boolean
+          subscription_tier: string
+          reason?: string
         }
       }
     }

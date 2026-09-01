@@ -121,14 +121,15 @@ export function FleetPage() {
   }, [])
 
   return (
-    <div className="fade-up space-y-5 pb-10">
+    <div className="fade-up min-h-0 flex-1 space-y-5 overflow-y-auto pb-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1.5">
           <Link to="/" className="im-pill !px-2.5">
             ← Back to Gus
           </Link>
           <p className="mt-3 font-mono text-[10px] tracking-[0.18em] text-steel-500 uppercase">Fleet</p>
-          <h1 className="text-2xl font-semibold tracking-tight text-steel-50">Your machines</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-steel-50">Equipment garage</h1>
+          <p className="text-sm text-steel-400">Machines Gus knows about — profiles, logs, and repair history.</p>
         </div>
         <Link to="/machines/new">
           <Button variant="secondary" size="sm">

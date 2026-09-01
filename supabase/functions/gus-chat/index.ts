@@ -14,10 +14,16 @@ import { buildSystemPrompt } from '../_shared/prompt.ts'
 import { callClaudeStream, parseAnthropicStream, type ClaudeContentBlock, type ClaudeMessage } from '../_shared/anthropic.ts'
 import { parseModelResponse } from '../_shared/parseResponse.ts'
 import { ResponseStreamFilter } from '../_shared/streamFilter.ts'
+import {
+  resolveClaudeModel,
+  tierAllowsPhotos,
+  tierAllowsWebSearch,
+  type SubscriptionTier,
+} from '../_shared/subscription.ts'
 
-const FREE_MESSAGE_LIMIT = Number(Deno.env.get('FREE_MESSAGE_LIMIT') ?? '20')
-/** On by default; set ENFORCE_FREE_TIER=false to disable the paywall while testing. */
-const ENFORCE_FREE_TIER = Deno.env.get('ENFORCE_FREE_TIER') !== 'false'
+const BASIC_MONTHLY_MESSAGE_LIMIT = Number(Deno.env.get('BASIC_MONTHLY_MESSAGE_LIMIT') ?? '75')
+/** On by default; set ENFORCE_SUBSCRIPTION=false to disable the paywall while testing. */
+const ENFORCE_SUBSCRIPTION = Deno.env.get('ENFORCE_SUBSCRIPTION') !== 'false'
 
 interface ChatRequestBody {
   machine_id: string
@@ -86,11 +92,27 @@ Deno.serve(async (req: Request) => {
   if (machineError) return jsonResponse({ error: machineError.message }, 500)
   if (!machine) return jsonResponse({ error: 'machine_not_found' }, 404)
 
-  // --- Free-tier enforcement (server-side): lifetime messages per account ---
-  // Count lives on profiles.gus_messages_used so deleting chats/machines cannot reset it.
-  if (ENFORCE_FREE_TIER) {
+  const { data: profileRow } = await userClient
+    .from('profiles')
+    .select('subscription_tier')
+    .eq('id', user.id)
+    .maybeSingle()
+  const subscriptionTier = (profileRow?.subscription_tier ?? 'free') as SubscriptionTier
+
+  if (photo_paths.length > 0 && !tierAllowsPhotos(subscriptionTier)) {
+    return jsonResponse(
+      {
+        error: 'premium_required',
+        message: 'Photo and video analysis requires Premium. Upgrade to attach images in chat.',
+      },
+      402,
+    )
+  }
+
+  // --- Subscription & usage enforcement (server-side) ---
+  if (ENFORCE_SUBSCRIPTION) {
     const { data: consumeRaw, error: consumeError } = await userClient.rpc('try_consume_gus_message', {
-      p_limit: FREE_MESSAGE_LIMIT,
+      p_basic_monthly_limit: BASIC_MONTHLY_MESSAGE_LIMIT,
     })
     if (consumeError) {
       console.error('gus-chat: try_consume_gus_message failed', consumeError)
@@ -106,14 +128,38 @@ Deno.serve(async (req: Request) => {
 
     const consume =
       typeof consumeRaw === 'string'
-        ? (JSON.parse(consumeRaw) as { allowed?: boolean; is_subscribed?: boolean })
-        : (consumeRaw as { allowed?: boolean; is_subscribed?: boolean } | null)
+        ? (JSON.parse(consumeRaw) as {
+            allowed?: boolean
+            is_subscribed?: boolean
+            subscription_tier?: string
+            reason?: string
+            messages_used?: number
+            messages_limit?: number
+          })
+        : (consumeRaw as {
+            allowed?: boolean
+            is_subscribed?: boolean
+            subscription_tier?: string
+            reason?: string
+            messages_used?: number
+            messages_limit?: number
+          } | null)
 
-    if (!consume?.allowed && !consume?.is_subscribed) {
+    if (!consume?.allowed) {
+      if (consume?.reason === 'monthly_limit') {
+        const limit = consume.messages_limit ?? BASIC_MONTHLY_MESSAGE_LIMIT
+        return jsonResponse(
+          {
+            error: 'monthly_limit_reached',
+            message: `You've used your ${limit} Basic diagnostics this month. Upgrade to Pro for unlimited text, or wait until next month.`,
+          },
+          402,
+        )
+      }
       return jsonResponse(
         {
-          error: 'free_tier_limit_reached',
-          message: `You've used your ${FREE_MESSAGE_LIMIT} free messages. Upgrade to keep working with Gus.`,
+          error: 'subscription_required',
+          message: 'Start your 7-day free trial to use Gus — card required, cancel anytime before it ends.',
         },
         402,
       )
@@ -210,7 +256,7 @@ Deno.serve(async (req: Request) => {
     ruledOutCount,
     // Give Gus the same live lookup path Claude has when we don't already
     // have a cached common-issues summary for this make/model/symptom.
-    hasWebSearchTool: !cachedCommonIssues,
+    hasWebSearchTool: tierAllowsWebSearch(subscriptionTier) && !cachedCommonIssues,
   })
 
   if (recentNextSteps.length > 0) {
@@ -232,15 +278,17 @@ YOU MUST:
 - Advance: new question, new check, or diagnosis/repair — always forward.`
   }
 
+  const hasImages = photo_paths.length > 0
+  const claudeModel = resolveClaudeModel(subscriptionTier, hasImages)
+
   let anthropicResponse: Response
   try {
     anthropicResponse = await callClaudeStream({
       system: systemPrompt,
       messages: claudeMessages,
       maxTokens: 2048,
-      // Re-enabled: turning this off made Gus feel thinner than Claude on
-      // make/model-specific failures, TSBs, and documented patterns.
-      enableWebSearch: !cachedCommonIssues,
+      model: claudeModel,
+      enableWebSearch: tierAllowsWebSearch(subscriptionTier) && !cachedCommonIssues,
     })
   } catch (err) {
     return jsonResponse({ error: 'claude_request_failed', message: String(err) }, 502)

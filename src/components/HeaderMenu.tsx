@@ -54,7 +54,7 @@ function MenuLink({
  * Top-right hamburger — holds machine switcher + account / billing actions.
  */
 export function HeaderMenu() {
-  const { isAnonymous, isSubscribed, signOut } = useAuth()
+  const { isAnonymous, subscriptionTier, signOut } = useAuth()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const [open, setOpen] = useState(false)
@@ -214,9 +214,19 @@ export function HeaderMenu() {
           )}
 
           <div className="py-1">
-            {!isSubscribed && (
+            {subscriptionTier === 'free' && (
+              <MenuLink to="/pricing" onClick={close} accent="yellow">
+                Start free trial
+              </MenuLink>
+            )}
+            {subscriptionTier === 'basic' && (
               <MenuLink to="/pricing" onClick={close} accent="yellow">
                 Upgrade to Pro
+              </MenuLink>
+            )}
+            {subscriptionTier === 'pro' && (
+              <MenuLink to="/pricing" onClick={close} accent="yellow">
+                Upgrade to Premium
               </MenuLink>
             )}
             <MenuLink to="/pricing" onClick={close}>

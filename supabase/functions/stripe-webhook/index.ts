@@ -1,4 +1,5 @@
 import { createServiceClient } from '../_shared/supabaseClients.ts'
+import { tierFromStripePrice, type SubscriptionTier } from '../_shared/subscription.ts'
 
 const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY') ?? ''
 const STRIPE_WEBHOOK_SECRET = Deno.env.get('STRIPE_WEBHOOK_SECRET') ?? ''
@@ -8,7 +9,6 @@ async function verifyStripeSignature(
   signatureHeader: string,
   secret: string,
 ): Promise<boolean> {
-  // Stripe-Signature: t=timestamp,v1=hmac
   const parts = Object.fromEntries(
     signatureHeader.split(',').map((p) => {
       const [k, v] = p.split('=')
@@ -30,18 +30,30 @@ async function verifyStripeSignature(
   const signed = await crypto.subtle.sign('HMAC', key, encoder.encode(`${timestamp}.${payload}`))
   const digest = [...new Uint8Array(signed)].map((b) => b.toString(16).padStart(2, '0')).join('')
 
-  // timing-safe-ish compare
   if (digest.length !== signature.length) return false
   let mismatch = 0
   for (let i = 0; i < digest.length; i++) mismatch |= digest.charCodeAt(i) ^ signature.charCodeAt(i)
   return mismatch === 0
 }
 
-async function setSubscribed(userId: string, customerId: string | null, subscribed: boolean) {
+async function setSubscriptionTier(userId: string, customerId: string | null, tier: SubscriptionTier) {
   const service = createServiceClient()
-  const patch: Record<string, unknown> = { is_subscribed: subscribed }
+  const patch: Record<string, unknown> = {
+    subscription_tier: tier,
+    is_subscribed: tier !== 'free',
+  }
   if (customerId) patch.stripe_customer_id = customerId
   await service.from('profiles').update(patch).eq('id', userId)
+}
+
+function tierFromSubscriptionObject(obj: Record<string, unknown>): SubscriptionTier {
+  const metadata = obj.metadata as Record<string, string> | undefined
+  if (metadata?.tier === 'premium' || metadata?.tier === 'pro' || metadata?.tier === 'basic') {
+    return metadata.tier
+  }
+  const items = obj.items as { data?: Array<{ price?: { id?: string } }> } | undefined
+  const priceId = items?.data?.[0]?.price?.id
+  return tierFromStripePrice(priceId)
 }
 
 async function userIdFromCustomer(customerId: string): Promise<string | null> {
@@ -53,7 +65,6 @@ async function userIdFromCustomer(customerId: string): Promise<string | null> {
     .maybeSingle()
   if (data?.id) return data.id
 
-  // Fallback: fetch customer metadata from Stripe
   if (!STRIPE_SECRET_KEY) return null
   const res = await fetch(`https://api.stripe.com/v1/customers/${customerId}`, {
     headers: { Authorization: `Bearer ${STRIPE_SECRET_KEY}` },
@@ -90,7 +101,10 @@ Deno.serve(async (req: Request) => {
         (obj.client_reference_id as string | undefined) ||
         ((obj.metadata as Record<string, string> | undefined)?.supabase_user_id ?? null)
       const customerId = typeof obj.customer === 'string' ? obj.customer : null
-      if (userId) await setSubscribed(userId, customerId, true)
+      const metaTier = (obj.metadata as Record<string, string> | undefined)?.tier
+      const tier: SubscriptionTier =
+        metaTier === 'premium' || metaTier === 'pro' || metaTier === 'basic' ? metaTier : 'pro'
+      if (userId) await setSubscriptionTier(userId, customerId, tier)
     }
 
     if (
@@ -104,7 +118,10 @@ Deno.serve(async (req: Request) => {
         const userId =
           ((obj.metadata as Record<string, string> | undefined)?.supabase_user_id ?? null) ||
           (await userIdFromCustomer(customerId))
-        if (userId) await setSubscribed(userId, customerId, active)
+        if (userId) {
+          const tier = active ? tierFromSubscriptionObject(obj) : 'free'
+          await setSubscriptionTier(userId, customerId, tier)
+        }
       }
     }
   } catch (err) {

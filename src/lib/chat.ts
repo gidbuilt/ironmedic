@@ -49,14 +49,20 @@ export async function streamChat({ machineId, message, photoPaths = [], onEvent,
 
   if (!response.ok) {
     let detail = ''
+    let errorCode: string | undefined
     try {
       const body = await response.json()
       detail = body.message || body.error || ''
+      errorCode = typeof body.error === 'string' ? body.error : undefined
     } catch {
       // ignore
     }
-    const err = new Error(detail || `Request failed (${response.status})`) as Error & { status?: number }
+    const err = new Error(detail || `Request failed (${response.status})`) as Error & {
+      status?: number
+      code?: string
+    }
     err.status = response.status
+    err.code = errorCode
     throw err
   }
 

@@ -5,6 +5,7 @@ import { Capacitor } from '@capacitor/core'
 import { supabase } from '../lib/supabase'
 import { streamChat } from '../lib/chat'
 import { uploadPhoto, getPhotoPreviewUrl } from '../lib/photos'
+import { canAttachPhotos } from '../lib/subscription'
 import { useAuth } from '../context/AuthContext'
 import { getMachine } from '../lib/machines'
 import { isTransientNetworkError } from '../lib/networkError'
@@ -17,7 +18,8 @@ import { DiagnosisCard } from './DiagnosisCard'
 import { DifferentialPanel } from './DifferentialPanel'
 import { sanitizeAssistantDisplay } from '../lib/chatDisplay'
 import { GUS_SHOP_CHAT_BG_URL } from '../lib/gusAssets'
-import { QUICK_CHAT_PLACEHOLDER_NAME } from './QuickChatBox'
+import { QUICK_CHAT_PLACEHOLDER_NAME } from '../lib/quickChat'
+import { TrialPrompt } from './TrialPrompt'
 
 interface LocalMessage {
   id: string
@@ -51,7 +53,8 @@ export function GusChatPanel({
   onNewChat,
   onInitialMessageConsumed,
 }: GusChatPanelProps) {
-  const { user, recoverSession } = useAuth()
+  const { user, recoverSession, isSubscribed, subscriptionTier } = useAuth()
+  const photosAllowed = canAttachPhotos(subscriptionTier)
   const [machine, setMachine] = useState<Machine | null>(null)
   const [messages, setMessages] = useState<LocalMessage[]>([])
   const [currentStage, setCurrentStage] = useState<DiagnosticStage | null>(null)
@@ -61,9 +64,11 @@ export function GusChatPanel({
   const [sending, setSending] = useState(false)
   const [statusText, setStatusText] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [errorCode, setErrorCode] = useState<string | null>(null)
   const [retryable, setRetryable] = useState(false)
   const [loading, setLoading] = useState(true)
   const [copiedToast, setCopiedToast] = useState(false)
+  const [photoUpgradePrompt, setPhotoUpgradePrompt] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const pinToBottomRef = useRef(true)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -84,6 +89,7 @@ export function GusChatPanel({
     prefillHandled.current = false
     setLoading(true)
     setError(null)
+    setErrorCode(null)
     setRetryable(false)
 
     async function load() {
@@ -224,6 +230,7 @@ export function GusChatPanel({
     pinToBottomRef.current = true
     setSending(true)
     setError(null)
+    setErrorCode(null)
     setRetryable(false)
     leftAppDuringSendRef.current = false
 
@@ -266,7 +273,7 @@ export function GusChatPanel({
           } else if (event.type === 'status') {
             setStatusText(
               event.status === 'searching_web'
-                ? 'Gus is checking what other operators have reported for this model…'
+                ? 'Running live web & forum intelligence for this make & model…'
                 : null,
             )
           } else if (event.type === 'done') {
@@ -294,9 +301,27 @@ export function GusChatPanel({
         },
       })
     } catch (err) {
-      const e = err as Error & { status?: number }
+      const e = err as Error & { status?: number; code?: string }
       if (e.status === 402) {
-        setError("You've used all your free messages. Upgrade to Pro to keep working with Gus.")
+        setErrorCode(e.code ?? null)
+        if (e.code === 'premium_required') {
+          setError(
+            e.message ||
+              'Photo and video analysis requires Premium. Upgrade to attach images in chat.',
+          )
+        } else if (e.code === 'monthly_limit_reached') {
+          setError(
+            e.message ||
+              "You've hit your Basic plan's monthly diagnostic limit. Upgrade to Pro for unlimited text.",
+          )
+        } else if (e.code === 'subscription_required') {
+          setError(
+            e.message ||
+              'Start your 7-day free trial to use Gus — card required, cancel anytime before it ends.',
+          )
+        } else {
+          setError(e.message || 'A subscription is required to continue.')
+        }
         setRetryable(false)
       } else if (isTransientNetworkError(err)) {
         // Keep any partial reply. Soft copy if they left the app mid-stream.
@@ -336,6 +361,12 @@ export function GusChatPanel({
       setRetryable(false)
       return
     }
+    if (attached.length > 0 && !canAttachPhotos(subscriptionTier)) {
+      setErrorCode('premium_required')
+      setError('Photo attachments require Premium. Upgrade to send images to Gus.')
+      setRetryable(false)
+      return
+    }
 
     setStatusText(attached.length > 0 ? 'Uploading photo…' : null)
 
@@ -367,6 +398,7 @@ export function GusChatPanel({
   async function handleRetry() {
     const last = lastSendRef.current
     setError(null)
+    setErrorCode(null)
     setRetryable(false)
     await recoverSession()
     if (last) {
@@ -486,13 +518,31 @@ export function GusChatPanel({
                 Retry
               </Button>
             )}
-            {(error.toLowerCase().includes('free messages') ||
-              error.toLowerCase().includes('free diagnoses')) && (
+            {(errorCode === 'subscription_required' ||
+              error.toLowerCase().includes('free trial')) && (
               <Link
                 to="/pricing"
                 className="inline-flex items-center text-sm font-medium text-safety-400 hover:underline"
               >
-                View Pro plans →
+                Start free trial →
+              </Link>
+            )}
+            {(errorCode === 'monthly_limit_reached' ||
+              error.toLowerCase().includes('monthly')) && (
+              <Link
+                to="/pricing"
+                className="inline-flex items-center text-sm font-medium text-tech-400 hover:underline"
+              >
+                Upgrade to Pro →
+              </Link>
+            )}
+            {(errorCode === 'premium_required' ||
+              error.toLowerCase().includes('premium')) && (
+              <Link
+                to="/pricing"
+                className="inline-flex items-center text-sm font-medium text-tech-400 hover:underline"
+              >
+                Upgrade to Premium →
               </Link>
             )}
           </div>
@@ -503,6 +553,36 @@ export function GusChatPanel({
 
   const composer = (
     <div className="im-composer-dock shrink-0 border-t border-steel-800/60 bg-gradient-to-t from-steel-950 via-steel-950/95 to-steel-950/80 pt-2">
+      {!isSubscribed ? (
+        <div className="px-3 pb-2 sm:px-4">
+          <TrialPrompt compact />
+        </div>
+      ) : (
+        <>
+      {photoUpgradePrompt && !photosAllowed && (
+        <div className="mb-2.5 flex items-start gap-2 rounded-2xl border border-steel-700/80 bg-steel-900/90 px-3.5 py-3 text-sm text-steel-300">
+          <p className="min-w-0 flex-1 leading-relaxed">
+            Photo analysis is a{' '}
+            <span className="font-medium text-steel-100">Premium</span> feature. Upgrade to send
+            images and video frames to Gus.
+          </p>
+          <Link
+            to="/pricing"
+            className="shrink-0 font-medium text-tech-400 hover:underline"
+            onClick={() => setPhotoUpgradePrompt(false)}
+          >
+            Upgrade
+          </Link>
+          <button
+            type="button"
+            onClick={() => setPhotoUpgradePrompt(false)}
+            className="shrink-0 text-steel-500 hover:text-steel-300"
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+      )}
       {photos.length > 0 && (
         <div className="mb-2.5 flex gap-2">
           {photos.map((f, i) => (
@@ -525,7 +605,7 @@ export function GusChatPanel({
           e.preventDefault()
           void handleSend()
         }}
-        className="rounded-3xl border border-steel-700/70 bg-steel-900/85 p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-md"
+        className="mx-3 mb-2 rounded-3xl border border-steel-700/70 bg-steel-900/85 p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-md sm:mx-4"
       >
         <div className="flex items-end gap-1.5">
           <input
@@ -545,10 +625,21 @@ export function GusChatPanel({
             variant="ghost"
             size="icon"
             disabled={sending}
-            onClick={() => fileInputRef.current?.click()}
-            title="Attach a photo"
-            aria-label="Attach a photo"
-            className="!rounded-2xl text-steel-300 hover:text-steel-50"
+            onClick={() => {
+              if (!photosAllowed) {
+                setPhotoUpgradePrompt(true)
+                return
+              }
+              setPhotoUpgradePrompt(false)
+              fileInputRef.current?.click()
+            }}
+            title={photosAllowed ? 'Attach a photo' : 'Premium required for photos'}
+            aria-label={photosAllowed ? 'Attach a photo' : 'Premium required for photos'}
+            className={`!rounded-2xl ${
+              photosAllowed
+                ? 'text-steel-300 hover:text-steel-50'
+                : 'cursor-pointer text-steel-600 opacity-40 hover:opacity-55'
+            }`}
           >
             <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor" aria-hidden>
               <path
@@ -580,15 +671,13 @@ export function GusChatPanel({
           </Button>
         </div>
       </form>
+        </>
+      )}
     </div>
   )
 
   const chatShell = (opts: { embedded: boolean }) => (
-    <div
-      className={`relative flex min-h-0 flex-col overflow-hidden ${
-        opts.embedded ? 'h-full' : 'h-full min-h-[20rem]'
-      }`}
-    >
+    <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       {/* Explicit <img> (not CSS background) so iOS re-decodes when remounting old chats. */}
       <img
         key={bgNonce}
@@ -657,7 +746,7 @@ export function GusChatPanel({
       </div>
 
       <div className="relative z-[1] flex min-h-0 flex-1 flex-col px-3 pt-2 sm:px-4">{messageList}</div>
-      <div className="relative z-[1] px-3 pb-0 sm:px-4">{composer}</div>
+      <div className="relative z-[1] shrink-0 px-3 pb-0 sm:px-4">{composer}</div>
 
       {copiedToast && (
         <div className="pointer-events-none absolute bottom-28 left-1/2 z-20 -translate-x-1/2 rounded-2xl border border-tech-400/40 bg-steel-900/95 px-4 py-2.5 text-sm text-steel-100 shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur-md">
@@ -671,5 +760,7 @@ export function GusChatPanel({
     return chatShell({ embedded: true })
   }
 
-  return <div className="mx-auto w-full max-w-3xl">{chatShell({ embedded: false })}</div>
+  return (
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-1 flex-col">{chatShell({ embedded: false })}</div>
+  )
 }
