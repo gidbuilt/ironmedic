@@ -39,3 +39,30 @@ export function tierRank(tier: SubscriptionTier): number {
       return 0
   }
 }
+
+function isCompTierActive(compTier: string | null | undefined, compExpiresAt: string | null | undefined): boolean {
+  if (compTier !== 'basic' && compTier !== 'pro' && compTier !== 'premium') return false
+  if (!compExpiresAt) return true
+  return new Date(compExpiresAt) > new Date()
+}
+
+/** Best of Stripe subscription tier and active complimentary access. */
+export function effectiveSubscriptionTier(
+  subscriptionTier: SubscriptionTier,
+  compTier: string | null | undefined,
+  compExpiresAt: string | null | undefined,
+): SubscriptionTier {
+  if (!isCompTierActive(compTier, compExpiresAt)) return subscriptionTier
+  const comp = normalizeSubscriptionTier(compTier)
+  return tierRank(comp) > tierRank(subscriptionTier) ? comp : subscriptionTier
+}
+
+export function hasComplimentaryAccess(
+  subscriptionTier: SubscriptionTier,
+  compTier: string | null | undefined,
+  compExpiresAt: string | null | undefined,
+): boolean {
+  if (!isCompTierActive(compTier, compExpiresAt)) return false
+  const effective = effectiveSubscriptionTier(subscriptionTier, compTier, compExpiresAt)
+  return isPaidTier(effective) && !isPaidTier(subscriptionTier)
+}

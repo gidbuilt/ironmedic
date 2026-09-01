@@ -5,7 +5,7 @@ import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { isTransientNetworkError } from '../lib/networkError'
 import { initNativeAppLifecycle } from '../lib/nativeAppLifecycle'
 import type { Profile } from '../types/database'
-import { isPaidTier, normalizeSubscriptionTier, type SubscriptionTier } from '../lib/subscription'
+import { isPaidTier, normalizeSubscriptionTier, effectiveSubscriptionTier, hasComplimentaryAccess, type SubscriptionTier } from '../lib/subscription'
 
 interface AuthContextValue {
   session: Session | null
@@ -17,6 +17,8 @@ interface AuthContextValue {
   isSubscribed: boolean
   subscriptionTier: SubscriptionTier
   isPremium: boolean
+  /** True when access comes from comp_tier, not Stripe. */
+  isComplimentary: boolean
   /** Set when anonymous bootstrap failed (e.g. provider disabled in Supabase). */
   authError: string | null
   refreshProfile: () => Promise<void>
@@ -50,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const { data } = await supabase
       .from('profiles')
-      .select('id, is_subscribed, subscription_tier, stripe_customer_id, created_at')
+      .select('id, is_subscribed, subscription_tier, comp_tier, comp_expires_at, stripe_customer_id, created_at')
       .eq('id', userId)
       .maybeSingle()
     setProfile((data as Profile | null) ?? null)
@@ -169,16 +171,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void initNativeAppLifecycle(() => recoverSession())
   }, [recoverSession])
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
+  const value = useMemo<AuthContextValue>(() => {
+    const billedTier = normalizeSubscriptionTier(profile?.subscription_tier)
+    const effectiveTier = effectiveSubscriptionTier(
+      billedTier,
+      profile?.comp_tier,
+      profile?.comp_expires_at ?? null,
+    )
+    return {
       session,
       user: session?.user ?? null,
       profile,
       loading,
       isAnonymous: Boolean(session?.user?.is_anonymous),
-      isSubscribed: isPaidTier(normalizeSubscriptionTier(profile?.subscription_tier)),
-      subscriptionTier: normalizeSubscriptionTier(profile?.subscription_tier),
-      isPremium: normalizeSubscriptionTier(profile?.subscription_tier) === 'premium',
+      isSubscribed: isPaidTier(effectiveTier),
+      subscriptionTier: effectiveTier,
+      isPremium: effectiveTier === 'premium',
+      isComplimentary: hasComplimentaryAccess(
+        billedTier,
+        profile?.comp_tier,
+        profile?.comp_expires_at ?? null,
+      ),
       authError,
       async refreshProfile() {
         await loadProfile(session?.user?.id)
@@ -280,9 +293,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await loadProfile(anon.session.user.id)
         setAuthError(null)
       },
-    }),
-    [session, profile, loading, authError, loadProfile, recoverSession],
-  )
+    }
+  }, [session, profile, loading, authError, loadProfile, recoverSession])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

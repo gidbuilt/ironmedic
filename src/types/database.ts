@@ -148,6 +148,8 @@ export type Profile = {
   id: string
   is_subscribed: boolean
   subscription_tier: 'free' | 'basic' | 'pro' | 'premium'
+  comp_tier: 'basic' | 'pro' | 'premium' | null
+  comp_expires_at: string | null
   stripe_customer_id: string | null
   gus_messages_used: number
   gus_messages_period_start: string

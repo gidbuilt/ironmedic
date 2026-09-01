@@ -13,7 +13,7 @@ import { Input } from '../components/ui/Input'
  * Account: plan status, guest → email upgrade, billing portal, delete data.
  */
 export function AccountPage() {
-  const { user, isAnonymous, isSubscribed, subscriptionTier, refreshProfile, signOut, upgradeGuestAccount } =
+  const { user, profile, isAnonymous, isSubscribed, subscriptionTier, isComplimentary, refreshProfile, signOut, upgradeGuestAccount } =
     useAuth()
   const navigate = useNavigate()
   const [params] = useSearchParams()
@@ -117,7 +117,10 @@ export function AccountPage() {
           <p className="font-mono text-[10px] tracking-[0.16em] text-steel-500 uppercase">Plan</p>
           <p className="mt-1.5 text-xl font-semibold tracking-tight text-steel-50">
             {tierLabel(subscriptionTier)}
-            {subscriptionTier === 'free' && (
+            {isComplimentary && (
+              <span className="ml-2 text-sm font-normal text-tech-400">· complimentary</span>
+            )}
+            {subscriptionTier === 'free' && !isComplimentary && (
               <span className="ml-2 text-sm font-normal text-steel-400">· trial not started</span>
             )}
             {subscriptionTier === 'basic' && (
@@ -152,7 +155,7 @@ export function AccountPage() {
                 </Button>
               </Link>
             )}
-            {isSubscribed && (
+            {isSubscribed && user && profile?.stripe_customer_id && (
               <Button
                 variant="secondary"
                 size="sm"

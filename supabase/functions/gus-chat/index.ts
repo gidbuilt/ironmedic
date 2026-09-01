@@ -15,6 +15,7 @@ import { callClaudeStream, parseAnthropicStream, type ClaudeContentBlock, type C
 import { parseModelResponse } from '../_shared/parseResponse.ts'
 import { ResponseStreamFilter } from '../_shared/streamFilter.ts'
 import {
+  effectiveSubscriptionTier,
   resolveClaudeModel,
   tierAllowsPhotos,
   tierAllowsWebSearch,
@@ -94,10 +95,14 @@ Deno.serve(async (req: Request) => {
 
   const { data: profileRow } = await userClient
     .from('profiles')
-    .select('subscription_tier')
+    .select('subscription_tier, comp_tier, comp_expires_at')
     .eq('id', user.id)
     .maybeSingle()
-  const subscriptionTier = (profileRow?.subscription_tier ?? 'free') as SubscriptionTier
+  const subscriptionTier = effectiveSubscriptionTier(
+    (profileRow?.subscription_tier ?? 'free') as SubscriptionTier,
+    profileRow?.comp_tier,
+    profileRow?.comp_expires_at ?? null,
+  )
 
   if (photo_paths.length > 0 && !tierAllowsPhotos(subscriptionTier)) {
     return jsonResponse(

@@ -40,6 +40,19 @@ Paid tier is stored on `profiles.subscription_tier` (`free` = no active sub, `ba
    ```
 4. Deploy `create-checkout`, `stripe-webhook`, and `gus-chat`.
 
+## Complimentary access (owner / demos)
+
+Grant tier without Stripe on `profiles.comp_tier` + optional `comp_expires_at` (`NULL` = permanent). Stripe webhooks do not clear these fields. Apply migration `0014_comp_access.sql`.
+
+```sql
+-- Permanent Premium for your account (replace email):
+update profiles
+set comp_tier = 'premium', comp_expires_at = null
+where id = (select id from auth.users where email = 'you@example.com');
+```
+
+Effective tier is the higher of Stripe `subscription_tier` and active comp access.
+
 ## Upgrades
 
 Checkout supports upgrades only (Basic → Pro → Premium). Downgrades use the Stripe Customer Portal.

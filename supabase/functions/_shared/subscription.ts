@@ -59,3 +59,22 @@ export function tierRank(tier: SubscriptionTier): number {
       return 0
   }
 }
+
+function isCompTierActive(
+  compTier: string | null | undefined,
+  compExpiresAt: string | null | undefined,
+): boolean {
+  if (compTier !== 'basic' && compTier !== 'pro' && compTier !== 'premium') return false
+  if (!compExpiresAt) return true
+  return new Date(compExpiresAt) > new Date()
+}
+
+export function effectiveSubscriptionTier(
+  subscriptionTier: SubscriptionTier,
+  compTier: string | null | undefined,
+  compExpiresAt: string | null | undefined,
+): SubscriptionTier {
+  if (!isCompTierActive(compTier, compExpiresAt)) return subscriptionTier
+  const comp = compTier as SubscriptionTier
+  return tierRank(comp) > tierRank(subscriptionTier) ? comp : subscriptionTier
+}
