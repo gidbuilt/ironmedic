@@ -227,7 +227,7 @@ export type Database = {
         Returns: undefined
       }
       try_consume_gus_message: {
-        Args: { p_basic_monthly_limit: number }
+        Args: { p_limit: number }
         Returns: {
           allowed: boolean
           messages_used: number

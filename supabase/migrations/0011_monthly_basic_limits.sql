@@ -6,7 +6,9 @@ alter table profiles
 comment on column profiles.gus_messages_period_start is
   'Start of the calendar month for gus_messages_used (Basic tier monthly cap).';
 
-create or replace function try_consume_gus_message(p_basic_monthly_limit integer)
+drop function if exists public.try_consume_gus_message(integer);
+
+create function try_consume_gus_message(p_limit integer)
 returns jsonb
 language plpgsql
 security definer
@@ -23,7 +25,7 @@ begin
     raise exception 'not authenticated';
   end if;
 
-  if p_basic_monthly_limit is null or p_basic_monthly_limit < 1 then
+  if p_limit is null or p_limit < 1 then
     raise exception 'invalid basic monthly limit';
   end if;
 
@@ -89,11 +91,11 @@ begin
   end if;
 
   -- Basic (pro): monthly cap.
-  if used >= p_basic_monthly_limit then
+  if used >= p_limit then
     return jsonb_build_object(
       'allowed', false,
       'messages_used', used,
-      'messages_limit', p_basic_monthly_limit,
+      'messages_limit', p_limit,
       'is_subscribed', true,
       'subscription_tier', tier,
       'reason', 'monthly_limit'
@@ -109,7 +111,7 @@ begin
   return jsonb_build_object(
     'allowed', true,
     'messages_used', used,
-    'messages_limit', p_basic_monthly_limit,
+    'messages_limit', p_limit,
     'is_subscribed', true,
     'subscription_tier', tier
   );

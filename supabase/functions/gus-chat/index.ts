@@ -112,7 +112,7 @@ Deno.serve(async (req: Request) => {
   // --- Subscription & usage enforcement (server-side) ---
   if (ENFORCE_SUBSCRIPTION) {
     const { data: consumeRaw, error: consumeError } = await userClient.rpc('try_consume_gus_message', {
-      p_basic_monthly_limit: BASIC_MONTHLY_MESSAGE_LIMIT,
+      p_limit: BASIC_MONTHLY_MESSAGE_LIMIT,
     })
     if (consumeError) {
       console.error('gus-chat: try_consume_gus_message failed', consumeError)
