@@ -73,7 +73,7 @@ export function SignupPage() {
           <BrandMark size="hero" showTagline={false} />
           <p className="mt-4 max-w-xs text-[15px] leading-relaxed text-steel-400">
             {forUpgrade
-              ? 'Create an account to unlock Pro — your guest chat history stays with you.'
+              ? 'Create an account to start your free trial — your guest chat history stays with you.'
               : 'Create your account to keep your fleet with Gus.'}
           </p>
         </div>

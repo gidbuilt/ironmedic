@@ -189,7 +189,7 @@ export function LoginPage() {
         </Card>
         <p className="mt-4 text-center text-sm text-steel-400">
           <Link to="/pricing" className="text-tech-400 hover:underline">
-            View Pro pricing
+            View pricing
           </Link>
         </p>
         <p className="mt-4 text-center text-steel-400">

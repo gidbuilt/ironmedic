@@ -35,12 +35,11 @@ export function SupportPage() {
           <ul className="list-disc space-y-2 pl-5">
             <li>
               <strong className="font-medium text-steel-200">Create an account:</strong> Menu → Sign in →
-              Create an account, or Account → Save this account. You may need to confirm your email before
-              signing in.
+              Create an account, or Account → Save this account.
             </li>
             <li>
-              <strong className="font-medium text-steel-200">Free tier:</strong> Each account includes a
-              Pro and Premium plans include a 7-day free trial. See Pricing in the app menu.
+              <strong className="font-medium text-steel-200">Plans &amp; billing:</strong> Basic, Pro, and
+              Premium include a 7-day free trial (card required). See Pricing in the app menu.
             </li>
             <li>
               <strong className="font-medium text-steel-200">Delete my data:</strong> Account → Delete my

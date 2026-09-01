@@ -20,7 +20,7 @@ export function Layout() {
   }, [user, isAnonymous])
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden">
       <header className="im-header sticky top-0 z-20 shrink-0 pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6 sm:py-4">
           <Link

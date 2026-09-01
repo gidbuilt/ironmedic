@@ -51,7 +51,7 @@ export function PricingPage() {
   }
 
   return (
-    <div className="fade-up mx-auto min-h-0 max-w-5xl flex-1 space-y-6 overflow-y-auto pb-10">
+    <div className="fade-up mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col space-y-6 overflow-y-auto overscroll-contain pb-10">
       <div className="space-y-1.5">
         <Link to="/" className="im-pill !px-2.5">
           ← Back
