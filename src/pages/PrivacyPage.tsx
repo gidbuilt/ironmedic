@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import { SUPPORT_EMAIL } from '../lib/support'
 import { Card } from '../components/ui/Card'
 
 /** Public privacy policy — required for App Store Connect. */
@@ -71,18 +70,11 @@ export function PrivacyPage() {
 
           <h2 className="pt-2 text-base font-semibold text-steel-100">Contact</h2>
           <p>
-            Questions about privacy:{' '}
-            <a
-              href={`mailto:${SUPPORT_EMAIL}?subject=IronMedic%20Privacy`}
-              className="text-tech-400 hover:underline"
-            >
-              {SUPPORT_EMAIL}
-            </a>{' '}
-            or visit our{' '}
+            Questions about privacy? Use the{' '}
             <Link to="/support" className="text-tech-400 hover:underline">
               Support page
-            </Link>
-            .
+            </Link>{' '}
+            to reach IronMedic.
           </p>
         </Card>
       </div>

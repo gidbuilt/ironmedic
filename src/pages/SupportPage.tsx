@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Card } from '../components/ui/Card'
-import { SUPPORT_EMAIL } from '../lib/support'
+import { Button } from '../components/ui/Button'
+import { supportMailtoUrl } from '../lib/support'
 
 /** Public support page — required for App Store Connect Support URL. */
 export function SupportPage() {
@@ -15,23 +16,20 @@ export function SupportPage() {
           <p className="text-steel-500">IronMedic — AI heavy-equipment diagnostics with Gus</p>
 
           <p>
-            Need help with the app, your account, billing, or a diagnostic conversation? Contact us and
-            we&apos;ll get back to you as soon as we can.
+            Need help with the app, your account, billing, or a diagnostic conversation? Send us a message
+            and we&apos;ll get back to you as soon as we can.
           </p>
 
-          <h2 className="pt-2 text-base font-semibold text-steel-100">Email</h2>
-          <p>
-            <a
-              href={`mailto:${SUPPORT_EMAIL}?subject=IronMedic%20Support`}
-              className="font-medium text-tech-400 hover:text-tech-300 hover:underline"
-            >
-              {SUPPORT_EMAIL}
+          <div className="rounded-2xl border border-steel-700/80 bg-steel-950/50 px-4 py-4">
+            <p className="font-mono text-[10px] tracking-[0.16em] text-steel-500 uppercase">Contact</p>
+            <a href={supportMailtoUrl()} className="mt-3 inline-block">
+              <Button type="button">Email IronMedic support</Button>
             </a>
-          </p>
-          <p className="text-steel-400">
-            Include your device (iPhone/iPad), iOS version, and a short description of the issue. Screenshots
-            help if something looks broken.
-          </p>
+            <p className="mt-3 text-steel-400">
+              Opens your mail app with a pre-filled subject line. Include your device (iPhone/iPad), iOS
+              version, and a short description of the issue. Screenshots help if something looks broken.
+            </p>
+          </div>
 
           <h2 className="pt-2 text-base font-semibold text-steel-100">Common questions</h2>
           <ul className="list-disc space-y-2 pl-5">
