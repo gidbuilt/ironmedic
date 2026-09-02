@@ -20,7 +20,7 @@ export function Layout() {
   }, [user, isAnonymous])
 
   return (
-    <div className="flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden">
+    <div className="im-app-shell flex min-h-0 flex-col overflow-hidden">
       <header className="im-header sticky top-0 z-20 shrink-0 pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6 sm:py-4">
           <Link
@@ -37,7 +37,7 @@ export function Layout() {
         </div>
         <div className="hazard-stripe h-[2px] w-full opacity-90" />
       </header>
-      <main className="mx-auto flex w-full max-w-5xl min-h-0 flex-1 flex-col overflow-hidden px-4 pt-4 pb-[var(--tab-bar-height)] sm:px-6 sm:pt-5">
+      <main className="im-layout-main mx-auto flex w-full max-w-5xl min-h-0 flex-1 flex-col overflow-hidden px-4 pt-4 sm:px-6 sm:pt-5">
         <Outlet />
       </main>
       {user && <BottomTabBar />}

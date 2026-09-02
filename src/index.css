@@ -48,8 +48,6 @@ body,
 
 body {
   @apply bg-steel-950 text-steel-100 font-sans antialiased;
-  /* Keyboard only — screens/composers own safe-area-inset-bottom so we don't double-pad */
-  padding-bottom: var(--keyboard-inset, 0px);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
 }
@@ -117,6 +115,26 @@ body {
 .im-pill {
   @apply inline-flex items-center justify-center rounded-full border border-steel-600/70 bg-steel-900/70
     px-3 py-1.5 text-xs font-medium text-steel-300 transition-colors hover:border-steel-500 hover:text-steel-100;
+}
+
+/* App shell — shrink with keyboard so fixed-height chat layouts lift the composer */
+.im-app-shell {
+  height: 100dvh;
+  max-height: 100dvh;
+}
+
+html[data-keyboard='open'] .im-app-shell {
+  height: calc(100dvh - var(--keyboard-inset, 0px));
+  max-height: calc(100dvh - var(--keyboard-inset, 0px));
+}
+
+.im-layout-main {
+  padding-bottom: var(--tab-bar-height);
+}
+
+html[data-keyboard='open'] .im-layout-main {
+  /* Tab bar is hidden; shell shrink lifts content — don't double-count keyboard inset */
+  padding-bottom: max(0.35rem, env(safe-area-inset-bottom, 0px));
 }
 
 /* Chat composer dock — flush to home indicator; shrink when keyboard lifts the body */
