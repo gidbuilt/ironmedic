@@ -170,12 +170,15 @@ export function AssistantMessageBody({
   onSelectCheck,
   checksDisabled,
   differential,
+  diagnosisReportMode,
 }: {
   content: string
   /** Sends a tapped Next Step answer as the user's message. */
   onSelectCheck?: (item: string) => void
   checksDisabled?: boolean
   differential?: DifferentialEntry[] | null
+  /** When a diagnosis report card follows, hide redundant probability / next-step UI. */
+  diagnosisReportMode?: boolean
 }) {
   const sections = useMemo(() => parseAssistantMessage(content), [content])
 
@@ -208,7 +211,8 @@ export function AssistantMessageBody({
       : undefined)
 
   // If Next Step was only legalese, don't show a fake card — leave Summary/Diagnosis
-  const showNextCard = Boolean(usableBlock && nextBody && !isDisclaimer(nextBody))
+  const showNextCard =
+    !diagnosisReportMode && Boolean(usableBlock && nextBody && !isDisclaimer(nextBody))
 
   return (
     <div className="space-y-3 whitespace-normal">
@@ -216,7 +220,9 @@ export function AssistantMessageBody({
         <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-steel-100">{summary}</p>
       )}
 
-      <DiagnosisList items={diagnosisItems} differential={differential} />
+      {!diagnosisReportMode && (
+        <DiagnosisList items={diagnosisItems} differential={differential} />
+      )}
 
       {showNextCard && usableBlock && (
         <NextStepCard

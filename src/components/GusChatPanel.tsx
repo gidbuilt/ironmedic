@@ -279,8 +279,11 @@ export function GusChatPanel({
           } else if (event.type === 'done') {
             setStatusText(null)
             setCurrentStage(event.stage)
-            if (event.differential && event.differential.length > 0) {
+            if (event.differential && event.differential.length > 0 && !event.diagnosis) {
               setDifferential(event.differential)
+            }
+            if (event.diagnosis) {
+              setDifferential(null)
             }
             setMessages((prev) =>
               prev.map((m) =>
@@ -432,7 +435,7 @@ export function GusChatPanel({
       onScroll={handleScroll}
       className="scrollbar-thin min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pb-2"
     >
-      {differential && differential.length > 0 && (
+      {differential && differential.length > 0 && !messages.some((m) => m.diagnosis) && (
         <DifferentialPanel
           key={`${differential[0]?.cause ?? ''}-${differential[0]?.confidence ?? ''}-${differential.length}`}
           entries={differential}
@@ -460,7 +463,8 @@ export function GusChatPanel({
                   }
                 : undefined
             }
-            differential={m.role === 'assistant' ? differential : undefined}
+            differential={m.role === 'assistant' && !m.diagnosis ? differential : undefined}
+            diagnosisReportMode={m.role === 'assistant' && Boolean(m.diagnosis)}
           >
             {m.role === 'user' ? (
               <>

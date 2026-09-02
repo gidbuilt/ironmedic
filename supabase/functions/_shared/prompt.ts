@@ -132,7 +132,11 @@ Which function is weak? → All functions | Lift / boom only | Travel only | Swi
 Check the rod seal area — what do you see? → Dry / clean | Wet / seeping | Active drip | Can't get to it | I'll type it
 
 STAGE:verify: Summary + Next Step (omit Possible Diagnosis until you can rank).
-Later stages: all three sections. No "Step 3 of 7" narration to the user.
+Later stages (theory|narrow|inspect|test): all three sections.
+STAGE:diagnosis: ## Summary only in visible sections — OMIT ## Possible Diagnosis
+and ## Next Step (the diagnosis report card follows immediately in the app).
+Still end with differential-json + diagnosis-json as required.
+No "Step 3 of 7" narration to the user.
 `.trim()
 
 const METHODOLOGY = `
@@ -165,6 +169,9 @@ NO LOOPS (critical):
 - If Summary already interprets their answer, Next Step = the verifying
   check that interpretation implies — advance together.
 - Treat each user message as the answer to your previous Next Step.
+- If that answer confirms your leading cause (or they name the fault you sent
+  them to find), jump straight to STAGE:diagnosis THIS turn — do not ship
+  another Possible Diagnosis + Next Step round first (see CONFIRMING CHECK below).
 
 Machine ID: ask when it matters, not as a blocker before any help.
 Never guess make from a model code alone (245G ≠ automatically Cat).
@@ -201,6 +208,31 @@ Rules:
 - This is separate from, and precedes, the final \`diagnosis-json\` block
   (below) which only fires at STAGE:diagnosis and includes the full
   write-up (safe-to-operate call, parts, etc.).
+`.trim()
+
+const CONFIRMING_CHECK_TO_DIAGNOSIS = `
+CONFIRMING CHECK → DIAGNOSIS (critical — no extra rounds):
+When YOUR prior turn's ## Next Step asked the user to check, observe, test, or
+report a finding, treat their message as the answer to that ask.
+
+If their answer confirms your top cause, rules out the alternatives you were
+weighing, or names the fault they were looking for ("it's the thermostat",
+"found the leak at the hose", a chip answer that matches what you expected for
+the leading hypothesis), you MUST advance to STAGE:diagnosis in THIS reply —
+not STAGE:inspect or STAGE:narrow with another round of probabilities and
+questions.
+
+In that concluding reply:
+- ## Summary: what their finding proves and your mechanical conclusion.
+- OMIT ## Possible Diagnosis and ## Next Step — the diagnosis-json report
+  (shown immediately below in the app) already carries ranked causes, parts,
+  repair steps, and verification. Do not duplicate them in prose first.
+- Still end with differential-json (top cause high, others near zero) then
+  diagnosis-json as required.
+
+Never ask the same verifying check again after they answered it. Never ship
+Possible Diagnosis percentages plus another Next Step when you already have
+enough to call it diagnosed.
 `.trim()
 
 const MULTI_SOURCE_SYNTHESIS = `
@@ -395,6 +427,7 @@ export function buildSystemPrompt(ctx: PromptContext): string {
     BREVITY,
     KNOWLEDGE_DEPTH,
     METHODOLOGY,
+    CONFIRMING_CHECK_TO_DIAGNOSIS,
     CONFIDENCE_TRACKING,
     MULTI_SOURCE_SYNTHESIS,
     FAILED_FIX_AND_CONVERGENCE,

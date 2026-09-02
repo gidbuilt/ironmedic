@@ -10,6 +10,7 @@ export function MessageBubble({
   streaming,
   onSelectCheck,
   differential,
+  diagnosisReportMode,
 }: {
   role: 'user' | 'assistant'
   children?: ReactNode
@@ -17,6 +18,7 @@ export function MessageBubble({
   streaming?: boolean
   onSelectCheck?: (item: string) => void
   differential?: DifferentialEntry[] | null
+  diagnosisReportMode?: boolean
 }) {
   const isUser = role === 'user'
 
@@ -49,6 +51,7 @@ export function MessageBubble({
             onSelectCheck={onSelectCheck}
             checksDisabled={streaming}
             differential={differential}
+            diagnosisReportMode={diagnosisReportMode}
           />
         )}
         {streaming && (
