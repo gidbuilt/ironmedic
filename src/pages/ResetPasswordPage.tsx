@@ -23,7 +23,6 @@ export function ResetPasswordPage() {
 
   useEffect(() => {
     if (!resolvingLink) return
-    let cancelled = false
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY' || session) setResolvingLink(false)
@@ -31,7 +30,6 @@ export function ResetPasswordPage() {
     const stop = window.setTimeout(() => setResolvingLink(false), 8000)
 
     return () => {
-      cancelled = true
       sub.subscription.unsubscribe()
       window.clearTimeout(stop)
     }
