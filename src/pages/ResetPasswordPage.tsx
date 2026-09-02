@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Card } from '../components/ui/Card'
@@ -14,8 +15,25 @@ export function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
+  const [resolvingLink, setResolvingLink] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      (window.location.hash.includes('access_token') || window.location.search.includes('code=')),
+  )
 
-  const canReset = !loading && user && !isAnonymous
+  useEffect(() => {
+    if (!resolvingLink) return
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || session) setResolvingLink(false)
+    })
+    const stop = window.setTimeout(() => setResolvingLink(false), 8000)
+    return () => {
+      sub.subscription.unsubscribe()
+      window.clearTimeout(stop)
+    }
+  }, [resolvingLink])
+
+  const canReset = !loading && !resolvingLink && user && !isAnonymous
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -62,7 +80,7 @@ export function ResetPasswordPage() {
             </div>
           ) : !canReset ? (
             <div className="text-center">
-              {loading ? (
+              {loading || resolvingLink ? (
                 <div className="space-y-3">
                   <div className="im-skeleton mx-auto h-4 w-48 rounded-full" />
                   <p className="text-sm text-steel-400">Checking reset link…</p>

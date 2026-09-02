@@ -4,6 +4,7 @@ import { withAuthTimeout } from '../lib/authTimeout'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { isTransientNetworkError } from '../lib/networkError'
 import { initNativeAppLifecycle } from '../lib/nativeAppLifecycle'
+import { appPath } from '../lib/appUrl'
 import type { Profile } from '../types/database'
 import { isPaidTier, normalizeSubscriptionTier, effectiveSubscriptionTier, hasComplimentaryAccess, type SubscriptionTier } from '../lib/subscription'
 
@@ -38,6 +39,20 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
+
+function hasAuthCallbackInUrl(): boolean {
+  if (typeof window === 'undefined') return false
+  const { hash, search } = window.location
+  return hash.includes('access_token') || search.includes('code=')
+}
+
+function shouldBootstrapAnonymous(): boolean {
+  if (typeof window === 'undefined') return true
+  const path = window.location.pathname
+  if (path === '/reset-password' || path === '/login' || path === '/signup') return false
+  if (hasAuthCallbackInUrl()) return false
+  return true
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
@@ -79,6 +94,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (data.session) {
           setSession(data.session)
           await loadProfile(data.session.user.id)
+          if (!cancelled) setLoading(false)
+          return
+        }
+
+        if (!shouldBootstrapAnonymous()) {
+          setSession(null)
+          setProfile(null)
           if (!cancelled) setLoading(false)
           return
         }
@@ -213,7 +235,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             supabase.auth.signUp({
               email: email.trim(),
               password,
-              options: { emailRedirectTo: `${window.location.origin}/login` },
+              options: { emailRedirectTo: appPath('/login') },
             }),
           )
           if (error) return { error: error.message, needsEmailConfirmation: false }
@@ -272,8 +294,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: null }
       },
       async resetPasswordForEmail(email) {
-        const redirectTo = `${window.location.origin}/reset-password`
-        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo })
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: appPath('/reset-password'),
+        })
         return { error: error?.message ?? null }
       },
       async updatePassword(password) {

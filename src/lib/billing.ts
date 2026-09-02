@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { appPath } from './appUrl'
 import type { SubscriptionTier } from './subscription'
 
 async function authHeaders(): Promise<HeadersInit> {
@@ -23,8 +24,8 @@ export async function startCheckout(tier: Exclude<SubscriptionTier, 'free'>): Pr
     headers,
     body: JSON.stringify({
       tier,
-      success_url: `${window.location.origin}/account?checkout=success`,
-      cancel_url: `${window.location.origin}/pricing?checkout=cancel`,
+      success_url: appPath('/account?checkout=success'),
+      cancel_url: appPath('/pricing?checkout=cancel'),
     }),
   })
   const json = (await res.json()) as { url?: string; upgraded?: boolean; error?: string; message?: string }
@@ -47,7 +48,7 @@ export async function openBillingPortal(): Promise<string> {
     method: 'POST',
     headers,
     body: JSON.stringify({
-      return_url: `${window.location.origin}/account`,
+      return_url: appPath('/account'),
     }),
   })
   const json = (await res.json()) as { url?: string; error?: string; message?: string }
