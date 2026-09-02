@@ -49,7 +49,14 @@ function hasAuthCallbackInUrl(): boolean {
 function shouldBootstrapAnonymous(): boolean {
   if (typeof window === 'undefined') return true
   const path = window.location.pathname
-  if (path === '/reset-password' || path === '/login' || path === '/signup') return false
+  if (
+    path === '/reset-password' ||
+    path === '/login' ||
+    path === '/signup' ||
+    path.startsWith('/auth/')
+  ) {
+    return false
+  }
   if (hasAuthCallbackInUrl()) return false
   return true
 }
@@ -295,7 +302,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       async resetPasswordForEmail(email) {
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-          redirectTo: appPath('/reset-password'),
+          redirectTo: appPath('/auth/callback'),
         })
         return { error: error?.message ?? null }
       },

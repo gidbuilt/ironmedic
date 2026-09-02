@@ -32,6 +32,9 @@
 ## Still needed before Review
 - Hosted production URL for Privacy Policy (and preferably the web app)
 - Deployed Edge Functions (`gus-chat`, Stripe functions) against production Supabase
+- **Supabase Auth URLs** (Dashboard → Authentication → URL Configuration):
+  - **Site URL:** `https://ironmedic.vercel.app`
+  - **Redirect URLs:** `https://ironmedic.vercel.app/**`
 - App Store screenshots (6.7" and 6.1" iPhones)
 - If the iOS app charges money: Apple **In-App Purchase** (Stripe web checkout alone is not enough on iOS)
 - Support URL: `https://ironmedic.vercel.app/support`

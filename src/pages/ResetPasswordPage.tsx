@@ -8,7 +8,7 @@ import { Card } from '../components/ui/Card'
 import { BrandMark } from '../components/BrandMark'
 
 export function ResetPasswordPage() {
-  const { updatePassword, user, loading, isAnonymous } = useAuth()
+  const { updatePassword, user, loading } = useAuth()
   const navigate = useNavigate()
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -23,17 +23,43 @@ export function ResetPasswordPage() {
 
   useEffect(() => {
     if (!resolvingLink) return
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY' || session) setResolvingLink(false)
+    let cancelled = false
+
+    async function resolveRecoverySession() {
+      const params = new URLSearchParams(window.location.search)
+      const code = params.get('code')
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+        if (!cancelled) {
+          if (exchangeError) setError(exchangeError.message)
+          window.history.replaceState({}, '', window.location.pathname)
+          setResolvingLink(false)
+        }
+        return
+      }
+
+      const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'PASSWORD_RECOVERY' || session) setResolvingLink(false)
+      })
+      const stop = window.setTimeout(() => setResolvingLink(false), 8000)
+      return () => {
+        sub.subscription.unsubscribe()
+        window.clearTimeout(stop)
+      }
+    }
+
+    let cleanup: (() => void) | undefined
+    void resolveRecoverySession().then((fn) => {
+      cleanup = fn
     })
-    const stop = window.setTimeout(() => setResolvingLink(false), 8000)
+
     return () => {
-      sub.subscription.unsubscribe()
-      window.clearTimeout(stop)
+      cancelled = true
+      cleanup?.()
     }
   }, [resolvingLink])
 
-  const canReset = !loading && !resolvingLink && user && !isAnonymous
+  const canReset = !loading && !resolvingLink && Boolean(user?.email)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
