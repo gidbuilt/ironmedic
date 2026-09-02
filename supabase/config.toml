@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.bootstrap-stripe-plans]
 verify_jwt = false
+
+[functions.stripe-archive-stale-prices]
+verify_jwt = false
+
+[functions.stripe-cancel-subscriptions]
+verify_jwt = false

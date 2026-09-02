@@ -3,7 +3,7 @@ import { createServiceClient } from '../_shared/supabaseClients.ts'
 
 const APP_URL = (Deno.env.get('APP_URL') ?? 'https://ironmedic.vercel.app').replace(/\/$/, '')
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? ''
-const RESEND_FROM = Deno.env.get('RESEND_FROM') ?? 'IronMedic <onboarding@resend.dev>'
+const RESEND_FROM = Deno.env.get('RESEND_FROM') ?? 'onboarding@resend.dev'
 
 function buildRecoveryUrl(tokenHash: string): string {
   const params = new URLSearchParams({ token_hash: tokenHash, type: 'recovery' })
@@ -22,7 +22,7 @@ async function sendResendEmail(to: string, resetUrl: string): Promise<string | n
     body: JSON.stringify({
       from: RESEND_FROM,
       to: [to],
-      subject: 'Reset your password',
+      subject: 'Reset your IronMedic password',
       html: `
         <h2>Reset your password</h2>
         <p>We received a request to reset your IronMedic password. Follow the link below to choose a new one.</p>
@@ -35,7 +35,12 @@ async function sendResendEmail(to: string, resetUrl: string): Promise<string | n
   if (!res.ok) {
     const text = await res.text()
     console.error('request-password-reset: resend failed', res.status, text)
-    return 'email_send_failed'
+    try {
+      const parsed = JSON.parse(text) as { message?: string }
+      return parsed.message ?? text
+    } catch {
+      return text
+    }
   }
   return null
 }
@@ -90,7 +95,12 @@ Deno.serve(async (req: Request) => {
 
   if (sendError) {
     return jsonResponse(
-      { error: sendError, message: 'Could not send reset email. Try again in a moment.' },
+      {
+        error: 'email_send_failed',
+        message: sendError.startsWith('Could not')
+          ? sendError
+          : `Could not send reset email: ${sendError}`,
+      },
       500,
     )
   }

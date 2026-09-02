@@ -59,7 +59,7 @@ export function LoginPage() {
   }
 
   const forgotHint =
-    'The reset link opens in your mail app (not inside IronMedic). Use the newest email after each request.'
+    'Look for an email with subject “Reset your IronMedic password” (not “Supabase Auth”). Old reset links will not work.'
 
   async function continueAsGuest() {
     setSubmitting(true)
