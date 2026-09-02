@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { PLANS, TRIAL_DAYS, type Plan } from '../lib/plans'
 import { startCheckout } from '../lib/billing'
+import { openExternalUrl } from '../lib/openExternalUrl'
 import { tierLabel, tierRank } from '../lib/subscription'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
@@ -36,8 +37,12 @@ export function PricingPage() {
 
     setBusyTier(plan.id)
     try {
-      const url = await startCheckout(plan.id)
-      window.location.assign(url)
+      const { url, upgraded } = await startCheckout(plan.id)
+      if (upgraded) {
+        navigate('/account?checkout=success')
+        return
+      }
+      await openExternalUrl(url)
     } catch (err) {
       console.error('[pricing] checkout failed', err)
       setError(

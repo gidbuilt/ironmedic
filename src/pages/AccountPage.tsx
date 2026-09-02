@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { openBillingPortal } from '../lib/billing'
+import { openExternalUrl } from '../lib/openExternalUrl'
 import { BASIC_MONTHLY_MESSAGE_LIMIT } from '../lib/plans'
 import { tierLabel } from '../lib/subscription'
 import { Card } from '../components/ui/Card'
@@ -90,7 +91,8 @@ export function AccountPage() {
     setError(null)
     try {
       const url = await openBillingPortal()
-      window.location.href = url
+      await openExternalUrl(url)
+      setBillingBusy(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not open billing portal.')
       setBillingBusy(false)

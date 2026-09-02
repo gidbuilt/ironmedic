@@ -15,8 +15,11 @@ async function authHeaders(): Promise<HeadersInit> {
   }
 }
 
-/** Starts Stripe Checkout for Pro or Premium. Returns the hosted Checkout URL. */
-export async function startCheckout(tier: Exclude<SubscriptionTier, 'free'>): Promise<string> {
+/** Starts Stripe Checkout for Pro or Premium. */
+export async function startCheckout(tier: Exclude<SubscriptionTier, 'free'>): Promise<{
+  url: string
+  upgraded?: boolean
+}> {
   const base = import.meta.env.VITE_SUPABASE_URL
   const headers = await authHeaders()
   const res = await fetch(`${base}/functions/v1/create-checkout`, {
@@ -28,16 +31,22 @@ export async function startCheckout(tier: Exclude<SubscriptionTier, 'free'>): Pr
       cancel_url: appPath('/pricing?checkout=cancel'),
     }),
   })
-  const json = (await res.json()) as { url?: string; upgraded?: boolean; error?: string; message?: string }
+  const json = (await res.json()) as {
+    url?: string
+    upgraded?: boolean
+    error?: string
+    message?: string
+  }
   if (!res.ok || !json.url) {
     throw new Error(json.message || json.error || `Checkout failed (${res.status})`)
   }
-  return json.url
+  return { url: json.url, upgraded: json.upgraded }
 }
 
 /** @deprecated Use startCheckout('pro') */
 export async function startProCheckout(): Promise<string> {
-  return startCheckout('pro')
+  const { url } = await startCheckout('pro')
+  return url
 }
 
 /** Opens Stripe Customer Portal for managing / canceling the subscription. */
