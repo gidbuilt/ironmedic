@@ -1,4 +1,5 @@
 import { handleCors, jsonResponse } from '../_shared/cors.ts'
+import { validateStripePriceForTier } from '../_shared/stripePlans.ts'
 import { createServiceClient, createUserClient, getAuthedUser } from '../_shared/supabaseClients.ts'
 import { tierLabel, tierRank, type SubscriptionTier } from '../_shared/subscription.ts'
 
@@ -71,15 +72,17 @@ Deno.serve(async (req: Request) => {
 
   let success_url = ''
   let cancel_url = ''
-  let tier: SubscriptionTier = 'pro'
+  let tier: SubscriptionTier | null = null
   try {
     const body = await req.json()
     success_url = String(body.success_url ?? '')
     cancel_url = String(body.cancel_url ?? '')
-    const parsed = parseTier(body.tier)
-    if (parsed) tier = parsed
+    tier = parseTier(body.tier)
   } catch {
     return jsonResponse({ error: 'invalid_json' }, 400)
+  }
+  if (!tier) {
+    return jsonResponse({ error: 'invalid_tier', message: 'Choose Basic, Pro, or Premium.' }, 400)
   }
   if (!success_url || !cancel_url) {
     return jsonResponse({ error: 'missing_urls' }, 400)
@@ -132,6 +135,10 @@ Deno.serve(async (req: Request) => {
   }
 
   const priceId = priceForTier(tier)
+  const priceCheck = await validateStripePriceForTier(priceId, tier, STRIPE_SECRET_KEY)
+  if (!priceCheck.ok) {
+    return jsonResponse({ error: 'price_mismatch', message: priceCheck.message }, 503)
+  }
 
   // Upgrade an existing subscription in-place (avoid duplicate Stripe subscriptions).
   if (currentTier !== 'free' && tierRank(tier) > tierRank(currentTier)) {
@@ -190,8 +197,10 @@ Deno.serve(async (req: Request) => {
     'line_items[0][quantity]': '1',
     'subscription_data[metadata][supabase_user_id]': user.id,
     'subscription_data[metadata][tier]': tier,
+    'subscription_data[description]': `IronMedic ${tierLabel(tier)}`,
     'metadata[supabase_user_id]': user.id,
     'metadata[tier]': tier,
+    'metadata[plan_name]': tierLabel(tier),
   }
   if (eligibleForTrial) {
     sessionParams['subscription_data[trial_period_days]'] = String(TRIAL_DAYS)

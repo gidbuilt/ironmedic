@@ -25,20 +25,29 @@ Paid tier is stored on `profiles.subscription_tier` (`free` = no active sub, `ba
 
 ## One-time Stripe setup
 
-1. Create three recurring prices in Stripe:
-   - **Basic** — $14 CAD/month
-   - **Pro** — $24 CAD/month
-   - **Premium** — $39 CAD/month
-2. Apply migrations `0010`, `0011`, and `0012`.
-3. Set Edge secrets:
+1. Apply migrations `0010`, `0011`, and `0012`.
+2. In Stripe Dashboard → **Products**, create three recurring **monthly CAD** prices:
+   - **Basic** — $14.00 CAD/month
+   - **Pro** — $24.00 CAD/month
+   - **Premium** — $39.00 CAD/month
+3. Set Edge secrets (all three are required — copy each price ID from Stripe):
+
+   | Secret | Plan | Amount |
+   |--------|------|--------|
+   | `STRIPE_PRICE_BASIC` | Basic | **$14.00 CAD / month** |
+   | `STRIPE_PRICE_PRO` | Pro | **$24.00 CAD / month** |
+   | `STRIPE_PRICE_PREMIUM` | Premium | **$39.00 CAD / month** |
+
    ```bash
    npx supabase secrets set STRIPE_PRICE_BASIC=price_...
    npx supabase secrets set STRIPE_PRICE_PRO=price_...
    npx supabase secrets set STRIPE_PRICE_PREMIUM=price_...
    npx supabase secrets set TRIAL_DAYS=7
    npx supabase secrets set BASIC_MONTHLY_MESSAGE_LIMIT=75
+   npx supabase functions deploy create-checkout stripe-webhook gus-chat
    ```
-4. Deploy `create-checkout`, `stripe-webhook`, and `gus-chat`.
+
+   `create-checkout` verifies each price ID matches the table above. Wrong amounts show an error in the app instead of a misleading Checkout page.
 
 ## Complimentary access (owner / demos)
 
