@@ -14,8 +14,8 @@ Paid tier is stored on `profiles.subscription_tier` (`free` = no active sub, `ba
 
 ## AI models (Edge Function secrets)
 
-- **Standard text** (all paid tiers, text-only turns): `ANTHROPIC_MODEL_STANDARD` — default `claude-haiku-4-20250514`
-- **Vision** (Premium photo turns): `ANTHROPIC_MODEL_PREMIUM` — default `claude-sonnet-4-20250514`
+- **Standard text** (all paid tiers, text-only turns): `ANTHROPIC_MODEL_STANDARD` — default `claude-haiku-4-5`
+- **Vision** (Premium photo turns): `ANTHROPIC_MODEL_PREMIUM` — default `claude-sonnet-4-5`
 
 ## Usage limits
 

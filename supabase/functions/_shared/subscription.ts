@@ -1,7 +1,7 @@
 export type SubscriptionTier = 'free' | 'basic' | 'pro' | 'premium'
 
-const STANDARD_MODEL = 'claude-haiku-4-20250514'
-const PREMIUM_VISION_MODEL = 'claude-sonnet-4-20250514'
+const STANDARD_MODEL = 'claude-haiku-4-5'
+const PREMIUM_VISION_MODEL = 'claude-sonnet-4-5'
 
 export function resolveClaudeModel(_tier: SubscriptionTier, hasImages: boolean): string {
   if (hasImages) {
