@@ -37,11 +37,22 @@ export function AuthCallbackPage() {
           if (verifyError) throw verifyError
         } else if (code) {
           const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-          if (exchangeError) throw exchangeError
+          if (exchangeError) {
+            if (exchangeError.message.toLowerCase().includes('pkce')) {
+              throw new Error(
+                'This reset link was opened in a different browser than where you requested it. Request a new reset email and open the link from that email.',
+              )
+            }
+            throw exchangeError
+          }
         } else if (hash.includes('access_token')) {
           const { data, error: sessionError } = await supabase.auth.getSession()
           if (sessionError) throw sessionError
-          if (!data.session) throw new Error('Auth link expired. Request a new email.')
+          if (!data.session) {
+            await new Promise((resolve) => window.setTimeout(resolve, 500))
+            const retry = await supabase.auth.getSession()
+            if (!retry.data.session) throw new Error('Auth link expired. Request a new email.')
+          }
         } else {
           throw new Error('Invalid or expired auth link.')
         }

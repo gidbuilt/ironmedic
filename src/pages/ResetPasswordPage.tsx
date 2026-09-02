@@ -25,37 +25,15 @@ export function ResetPasswordPage() {
     if (!resolvingLink) return
     let cancelled = false
 
-    async function resolveRecoverySession() {
-      const params = new URLSearchParams(window.location.search)
-      const code = params.get('code')
-      if (code) {
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-        if (!cancelled) {
-          if (exchangeError) setError(exchangeError.message)
-          window.history.replaceState({}, '', window.location.pathname)
-          setResolvingLink(false)
-        }
-        return
-      }
-
-      const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'PASSWORD_RECOVERY' || session) setResolvingLink(false)
-      })
-      const stop = window.setTimeout(() => setResolvingLink(false), 8000)
-      return () => {
-        sub.subscription.unsubscribe()
-        window.clearTimeout(stop)
-      }
-    }
-
-    let cleanup: (() => void) | undefined
-    void resolveRecoverySession().then((fn) => {
-      cleanup = fn
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || session) setResolvingLink(false)
     })
+    const stop = window.setTimeout(() => setResolvingLink(false), 8000)
 
     return () => {
       cancelled = true
-      cleanup?.()
+      sub.subscription.unsubscribe()
+      window.clearTimeout(stop)
     }
   }, [resolvingLink])
 

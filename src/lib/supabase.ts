@@ -18,7 +18,9 @@ export const supabase = createClient<Database>(
   {
     auth: {
       detectSessionInUrl: true,
-      flowType: 'pkce',
+      // Implicit flow: reset emails open in Mail/Safari, not the in-app browser where
+      // PKCE stores its code verifier. PKCE breaks cross-app password reset.
+      flowType: 'implicit',
       persistSession: true,
     },
   },
