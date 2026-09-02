@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import type { EmailOtpType } from '@supabase/supabase-js'
+import { establishSessionFromHash, isRecoveryAuthType } from '../lib/authRedirect'
 import { supabase } from '../lib/supabase'
 import { Card } from '../components/ui/Card'
 import { BrandMark } from '../components/BrandMark'
 
-function isRecoveryType(type: string | null, hash: string): boolean {
-  return type === 'recovery' || hash.includes('type=recovery')
-}
+const STALE_PKCE_MESSAGE =
+  'This reset link is out of date. Open https://ironmedic.vercel.app/login on your phone, tap Forgot password, and use the link from the new email.'
 
 /**
- * Handles Supabase auth redirects: PKCE code exchange, token_hash confirm links,
- * and legacy hash tokens. Used by password reset and email confirmation flows.
+ * Handles Supabase auth redirects: token_hash confirm links and implicit hash tokens.
+ * PKCE ?code= links are rejected — they fail when opened outside the requesting browser.
  */
 export function AuthCallbackPage() {
   const navigate = useNavigate()
@@ -36,23 +36,10 @@ export function AuthCallbackPage() {
           })
           if (verifyError) throw verifyError
         } else if (code) {
-          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-          if (exchangeError) {
-            if (exchangeError.message.toLowerCase().includes('pkce')) {
-              throw new Error(
-                'This reset link was opened in a different browser than where you requested it. Request a new reset email and open the link from that email.',
-              )
-            }
-            throw exchangeError
-          }
+          throw new Error(STALE_PKCE_MESSAGE)
         } else if (hash.includes('access_token')) {
-          const { data, error: sessionError } = await supabase.auth.getSession()
-          if (sessionError) throw sessionError
-          if (!data.session) {
-            await new Promise((resolve) => window.setTimeout(resolve, 500))
-            const retry = await supabase.auth.getSession()
-            if (!retry.data.session) throw new Error('Auth link expired. Request a new email.')
-          }
+          const ok = await establishSessionFromHash(hash)
+          if (!ok) throw new Error('Auth link expired. Request a new email.')
         } else {
           throw new Error('Invalid or expired auth link.')
         }
@@ -60,7 +47,7 @@ export function AuthCallbackPage() {
         if (cancelled) return
 
         window.history.replaceState({}, '', window.location.pathname)
-        navigate(isRecoveryType(type, hash) ? '/reset-password' : next, { replace: true })
+        navigate(isRecoveryAuthType(type, hash) ? '/reset-password' : next, { replace: true })
       } catch (err) {
         if (cancelled) return
         setError(err instanceof Error ? err.message : 'Could not complete sign-in.')

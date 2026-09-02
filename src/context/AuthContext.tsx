@@ -5,6 +5,7 @@ import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { isTransientNetworkError } from '../lib/networkError'
 import { initNativeAppLifecycle } from '../lib/nativeAppLifecycle'
 import { appPath } from '../lib/appUrl'
+import { requestPasswordResetEmail } from '../lib/passwordReset'
 import type { Profile } from '../types/database'
 import { isPaidTier, normalizeSubscriptionTier, effectiveSubscriptionTier, hasComplimentaryAccess, type SubscriptionTier } from '../lib/subscription'
 
@@ -301,10 +302,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: null }
       },
       async resetPasswordForEmail(email) {
-        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-          redirectTo: appPath('/auth/callback'),
-        })
-        return { error: error?.message ?? null }
+        return requestPasswordResetEmail(email)
       },
       async updatePassword(password) {
         const { error } = await supabase.auth.updateUser({ password })

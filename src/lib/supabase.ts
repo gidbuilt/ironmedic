@@ -17,9 +17,8 @@ export const supabase = createClient<Database>(
   supabaseAnonKey || 'placeholder-anon-key',
   {
     auth: {
-      detectSessionInUrl: true,
-      // Implicit flow: reset emails open in Mail/Safari, not the in-app browser where
-      // PKCE stores its code verifier. PKCE breaks cross-app password reset.
+      // We handle auth redirects manually on /auth/* so PKCE auto-exchange never runs in Mail/Safari.
+      detectSessionInUrl: false,
       flowType: 'implicit',
       persistSession: true,
     },

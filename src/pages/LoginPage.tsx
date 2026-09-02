@@ -58,6 +58,9 @@ export function LoginPage() {
     }
   }
 
+  const forgotHint =
+    'The reset link opens in your mail app (not inside IronMedic). Use the newest email after each request.'
+
   async function continueAsGuest() {
     setSubmitting(true)
     setError(null)
@@ -92,6 +95,7 @@ export function LoginPage() {
                   If an account exists for <span className="text-steel-200">{email}</span>, we sent a
                   password reset link.
                 </p>
+                <p className="mt-2 text-xs leading-relaxed text-steel-500">{forgotHint}</p>
                 <Button
                   type="button"
                   className="mt-6 w-full"
