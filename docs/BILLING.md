@@ -6,7 +6,7 @@
 |------|-------|--------------|
 | **Basic** | $14 CAD/mo | 75 diagnostics/mo, live web intelligence, fleet |
 | **Pro** | $24 CAD/mo | Unlimited text, live web intelligence, fleet, manuals |
-| **Premium** | $39 CAD/mo | Everything in Pro + photo/video vision (Sonnet) |
+| **Premium** | $39 CAD/mo | Everything in Pro + photo vision (Sonnet) |
 
 There is **no free tier**. New subscribers get a **7-day free trial** after adding a card in Stripe Checkout.
 

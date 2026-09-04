@@ -108,7 +108,7 @@ Deno.serve(async (req: Request) => {
     return jsonResponse(
       {
         error: 'premium_required',
-        message: 'Photo and video analysis requires Premium. Upgrade to attach images in chat.',
+        message: 'Photo analysis requires Premium. Upgrade to attach images in chat.',
       },
       402,
     )

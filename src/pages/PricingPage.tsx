@@ -67,7 +67,7 @@ export function PricingPage() {
         </h1>
         <p className="max-w-xl text-[15px] leading-relaxed text-steel-400">
           Add a card to start your trial — you won&apos;t be charged until day {TRIAL_DAYS + 1}. Basic
-          for light use, Pro for unlimited text, Premium when Gus needs to see photos or video.
+          for light use, Pro for unlimited text, Premium when Gus needs to see photos.
         </p>
       </div>
 

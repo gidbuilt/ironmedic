@@ -75,6 +75,8 @@ export function GusChatPanel({
   const prefillHandled = useRef(false)
   const abortRef = useRef<AbortController | null>(null)
   const lastSendRef = useRef<{ text: string; photoPaths: string[]; localPhotoUrls: string[] } | null>(null)
+  /** Sync guard — state alone can allow a double-tap before re-render. */
+  const sendingRef = useRef(false)
   /** True if the user left the app while a Gus request was in flight. */
   const leftAppDuringSendRef = useRef(false)
   /** Forces the shop photo to remount/decode when reopening a chat (iOS WKWebView). */
@@ -228,6 +230,7 @@ export function GusChatPanel({
     lastSendRef.current = { text: messageText, photoPaths, localPhotoUrls }
 
     pinToBottomRef.current = true
+    sendingRef.current = true
     setSending(true)
     setError(null)
     setErrorCode(null)
@@ -310,7 +313,7 @@ export function GusChatPanel({
         if (e.code === 'premium_required') {
           setError(
             e.message ||
-              'Photo and video analysis requires Premium. Upgrade to attach images in chat.',
+              'Photo analysis requires Premium. Upgrade to attach images in chat.',
           )
         } else if (e.code === 'monthly_limit_reached') {
           setError(
@@ -349,6 +352,7 @@ export function GusChatPanel({
       }
     } finally {
       if (abortRef.current === controller) abortRef.current = null
+      sendingRef.current = false
       setSending(false)
       setStatusText(null)
       leftAppDuringSendRef.current = false
@@ -356,6 +360,7 @@ export function GusChatPanel({
   }
 
   async function handleSend(overrideText?: string) {
+    if (sendingRef.current) return
     const text = (overrideText ?? input).trim()
     const attached = [...photos]
     if (!text && attached.length === 0) return
@@ -371,7 +376,16 @@ export function GusChatPanel({
       return
     }
 
-    setStatusText(attached.length > 0 ? 'Uploading photo…' : null)
+    // Lock the composer immediately — photo upload can take several seconds
+    // before runStream starts, and people will tap Send again without feedback.
+    sendingRef.current = true
+    setSending(true)
+    setError(null)
+    setErrorCode(null)
+    setRetryable(false)
+    const uploadLabel =
+      attached.length > 1 ? `Uploading ${attached.length} photos…` : 'Uploading photo…'
+    setStatusText(attached.length > 0 ? uploadLabel : 'Sending…')
 
     try {
       await recoverSession()
@@ -393,6 +407,7 @@ export function GusChatPanel({
         setError(err instanceof Error ? err.message : 'Something went wrong talking to Gus.')
         setRetryable(true)
       }
+      sendingRef.current = false
       setSending(false)
       setStatusText(null)
     }
@@ -568,7 +583,7 @@ export function GusChatPanel({
           <p className="min-w-0 flex-1 leading-relaxed">
             Photo analysis is a{' '}
             <span className="font-medium text-steel-100">Premium</span> feature. Upgrade to send
-            images and video frames to Gus.
+            photos to Gus.
           </p>
           <Link
             to="/pricing"
@@ -588,20 +603,39 @@ export function GusChatPanel({
         </div>
       )}
       {photos.length > 0 && (
-        <div className="mb-2.5 flex gap-2">
+        <div className="mb-2.5 flex gap-2 px-3 sm:px-4">
           {photos.map((f, i) => (
-            <div key={i} className="relative">
+            <div key={i} className="relative shrink-0">
               <img src={URL.createObjectURL(f)} alt="" className="h-16 w-16 rounded-2xl object-cover" />
-              <button
-                type="button"
-                onClick={() => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
-                className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-steel-600 bg-steel-950 text-xs text-steel-300"
-              >
-                ×
-              </button>
+              {sending ? (
+                <div
+                  className="absolute inset-0 flex items-center justify-center rounded-2xl bg-steel-950/65"
+                  aria-hidden
+                >
+                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-tech-400/30 border-t-tech-400" />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
+                  className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-steel-600 bg-steel-950 text-xs text-steel-300"
+                >
+                  ×
+                </button>
+              )}
             </div>
           ))}
         </div>
+      )}
+
+      {sending && statusText && (
+        <p className="mb-2 flex items-center gap-2 px-3 text-sm text-tech-300/90 sm:px-4" aria-live="polite">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="status-pulse absolute inline-flex h-full w-full rounded-full bg-tech-400" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-tech-400" />
+          </span>
+          {statusText}
+        </p>
       )}
 
       <form
@@ -609,7 +643,9 @@ export function GusChatPanel({
           e.preventDefault()
           void handleSend()
         }}
-        className="mx-3 mb-2 rounded-3xl border border-steel-700/70 bg-steel-900/85 p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-md sm:mx-4"
+        className={`mx-3 mb-2 rounded-3xl border bg-steel-900/85 p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-md sm:mx-4 ${
+          sending ? 'border-tech-400/45' : 'border-steel-700/70'
+        }`}
       >
         <div className="flex items-end gap-1.5">
           <input
@@ -663,15 +699,20 @@ export function GusChatPanel({
             }}
             placeholder={photos.length > 0 ? 'Add a caption (optional)…' : "Tell Gus what's going on…"}
             rows={1}
-            className="im-field min-h-11 max-h-28 flex-1 border-transparent bg-transparent px-2 py-2.5 shadow-none focus:border-transparent focus:shadow-none"
+            disabled={sending}
+            className="im-field min-h-11 max-h-28 flex-1 border-transparent bg-transparent px-2 py-2.5 shadow-none focus:border-transparent focus:shadow-none disabled:opacity-70"
           />
           <Button
             type="submit"
             disabled={sending || (!input.trim() && photos.length === 0)}
             size="sm"
-            className="mb-0.5 mr-0.5 shrink-0"
+            className="mb-0.5 mr-0.5 shrink-0 min-w-[4.5rem]"
           >
-            {sending ? '…' : 'Send'}
+            {sending
+              ? photos.length > 0 || statusText?.startsWith('Uploading')
+                ? 'Uploading…'
+                : 'Sending…'
+              : 'Send'}
           </Button>
         </div>
       </form>

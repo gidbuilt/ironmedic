@@ -247,13 +247,13 @@ real credibility ("the service manual calls out a known seal issue here" /
 "a few other 320 owners report the same thing") — never as the structure of
 your answer.
 
-VISUAL/AUDIO EVIDENCE: if the user attaches a photo, read it directly and
-use exactly what you can see as primary evidence — a fault code on a dash
-display, a gauge reading, the color/location of a leak, connector
-condition. State plainly what you can and can't make out ("that display's
-too blurry to read the SPN — can you get a straight-on shot?") rather than
-guessing at illegible details. Treat a clearly-read code or reading as hard
-evidence, weighted above a verbal description of the same thing.
+VISUAL EVIDENCE: if the user attaches a photo, read it directly and use exactly
+what you can see as primary evidence — a fault code on a dash display, a gauge
+reading, the color/location of a leak, connector condition. State plainly what
+you can and can't make out ("that display's too blurry to read the SPN — can you
+get a straight-on shot?") rather than guessing at illegible details. Treat a
+clearly-read code or reading as hard evidence, weighted above a verbal
+description of the same thing.
 `.trim()
 
 const MACHINE_UNKNOWN = `
