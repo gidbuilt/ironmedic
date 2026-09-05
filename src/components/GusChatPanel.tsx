@@ -61,6 +61,7 @@ export function GusChatPanel({
   const [differential, setDifferential] = useState<DifferentialEntry[] | null>(null)
   const [input, setInput] = useState('')
   const [photos, setPhotos] = useState<File[]>([])
+  const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([])
   const [sending, setSending] = useState(false)
   const [statusText, setStatusText] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -85,6 +86,14 @@ export function GusChatPanel({
   useEffect(() => {
     setBgNonce(Date.now())
   }, [machineId])
+
+  useEffect(() => {
+    const urls = photos.map((f) => URL.createObjectURL(f))
+    setPhotoPreviewUrls(urls)
+    return () => {
+      for (const url of urls) URL.revokeObjectURL(url)
+    }
+  }, [photos])
 
   useEffect(() => {
     let cancelled = false
@@ -465,20 +474,29 @@ export function GusChatPanel({
           </p>
         </div>
       )}
-      {messages.map((m, idx) => (
+      {(() => {
+        const lastAssistantIdx = (() => {
+          for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i]?.role === 'assistant') return i
+          }
+          return -1
+        })()
+        return messages.map((m, idx) => {
+        const isLatestAssistant = m.role === 'assistant' && idx === lastAssistantIdx
+        return (
         <div key={m.id} className="flex flex-col gap-2">
           <MessageBubble
             role={m.role}
             content={m.role === 'assistant' ? m.content : undefined}
             streaming={sending && m.role === 'assistant' && idx === messages.length - 1}
             onSelectCheck={
-              m.role === 'assistant' && !sending
+              isLatestAssistant && !sending
                 ? (item) => {
                     void handleSend(item)
                   }
                 : undefined
             }
-            differential={m.role === 'assistant' && !m.diagnosis ? differential : undefined}
+            differential={isLatestAssistant && !m.diagnosis ? differential : undefined}
             diagnosisReportMode={m.role === 'assistant' && Boolean(m.diagnosis)}
           >
             {m.role === 'user' ? (
@@ -514,7 +532,9 @@ export function GusChatPanel({
             />
           )}
         </div>
-      ))}
+        )
+      })
+      })()}
       {statusText && (
         <p className="flex items-center gap-2 text-sm text-tech-300/90">
           <span className="relative flex h-1.5 w-1.5">
@@ -605,8 +625,12 @@ export function GusChatPanel({
       {photos.length > 0 && (
         <div className="mb-2.5 flex gap-2 px-3 sm:px-4">
           {photos.map((f, i) => (
-            <div key={i} className="relative shrink-0">
-              <img src={URL.createObjectURL(f)} alt="" className="h-16 w-16 rounded-2xl object-cover" />
+            <div key={`${f.name}-${f.size}-${f.lastModified}`} className="relative shrink-0">
+              <img
+                src={photoPreviewUrls[i] ?? ''}
+                alt=""
+                className="h-16 w-16 rounded-2xl object-cover"
+              />
               {sending ? (
                 <div
                   className="absolute inset-0 flex items-center justify-center rounded-2xl bg-steel-950/65"

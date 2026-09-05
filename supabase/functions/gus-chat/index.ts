@@ -114,8 +114,24 @@ Deno.serve(async (req: Request) => {
     )
   }
 
+  // --- Gather conversation history BEFORE consume/insert ---
+  // Needed to detect retries: last row already the same user turn (stream failed
+  // after persist) → don't re-consume quota or double-insert.
+  const { data: historyRows } = await userClient
+    .from('conversations')
+    .select('role, content')
+    .eq('machine_id', machine_id)
+    .order('created_at', { ascending: true })
+
+  const lastHistory = historyRows?.[historyRows.length - 1] as
+    | { role: string; content: string }
+    | undefined
+  const isRetry =
+    lastHistory?.role === 'user' &&
+    lastHistory.content.trim() === userMessage.trim()
+
   // --- Subscription & usage enforcement (server-side) ---
-  if (ENFORCE_SUBSCRIPTION) {
+  if (ENFORCE_SUBSCRIPTION && !isRetry) {
     const { data: consumeRaw, error: consumeError } = await userClient.rpc('try_consume_gus_message', {
       p_limit: BASIC_MONTHLY_MESSAGE_LIMIT,
     })
@@ -171,13 +187,6 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // --- Gather conversation history BEFORE inserting this turn ---
-  const { data: historyRows } = await userClient
-    .from('conversations')
-    .select('role, content')
-    .eq('machine_id', machine_id)
-    .order('created_at', { ascending: true })
-
   // --- Knowledge layers ---
   const [machineHistory, pendingDiagnosisRow, spnMatches, manualExcerpts] = await Promise.all([
     getMachineHistory(userClient, machine_id),
@@ -200,15 +209,17 @@ Deno.serve(async (req: Request) => {
     ? await getCachedCommonIssues(userClient, machine.make, machine.model, symptomKeywords)
     : null
 
-  // --- Persist the user's turn ---
-  await userClient.from('conversations').insert({
-    machine_id,
-    user_id: user.id,
-    role: 'user',
-    content: userMessage,
-    mode: 'repair',
-    photo_paths,
-  })
+  // --- Persist the user's turn (skip on retry — already stored) ---
+  if (!isRetry) {
+    await userClient.from('conversations').insert({
+      machine_id,
+      user_id: user.id,
+      role: 'user',
+      content: userMessage,
+      mode: 'repair',
+      photo_paths,
+    })
+  }
 
   // --- Build the current turn's content blocks (text + any photos) ---
   const currentContentBlocks: ClaudeContentBlock[] = [{ type: 'text', text: userMessage }]
@@ -225,15 +236,19 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  // On retry, history already ends with this user message — drop it so we don't
+  // send the same user turn twice to Claude.
+  const historyForClaude = isRetry ? (historyRows ?? []).slice(0, -1) : (historyRows ?? [])
+
   const claudeMessages: ClaudeMessage[] = [
-    ...(historyRows ?? []).map((row: { role: string; content: string }) => ({
+    ...historyForClaude.map((row: { role: string; content: string }) => ({
       role: (row.role === 'assistant' ? 'assistant' : 'user') as 'assistant' | 'user',
       content: row.content,
     })),
     { role: 'user', content: currentContentBlocks },
   ]
 
-  const recentNextSteps = (historyRows ?? [])
+  const recentNextSteps = historyForClaude
     .filter((row: { role: string }) => row.role === 'assistant')
     .map((row: { content: string }) => {
       const m = row.content.match(/##\s*Next Step\s*\r?\n+([^\n#]+)/i)
@@ -280,6 +295,8 @@ YOU MUST:
   RPM → pump/suction), Next Step MUST be the next VERIFYING check that conclusion
   implies (oil level / sight glass, suction air, cavitation signs, pressure, etc.) —
   never the prior "what does it sound like?" fork again.
+- New Next Step + → chips must be one coherent fork: chips are answers/findings
+  for THAT ask only (check ask → finding chips; where ask → location chips).
 - Advance: new question, new check, or diagnosis/repair — always forward.`
   }
 

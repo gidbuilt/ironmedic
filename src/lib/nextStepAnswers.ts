@@ -414,7 +414,7 @@ function labeledBinaryChips(ask: string): string[] | null {
 }
 
 function isMakeAsk(text: string): boolean {
-  return /\b(what (make|brand)|which (make|brand)|is (it|this) (a |an )?(cat|deere|john deere|komatsu|hitachi|volvo|case|kubota))\b/i.test(
+  return /\b(what'?s? the (make|brand)|what (make|brand)|which (make|brand)|is (it|this) (a |an )?(cat|deere|john deere|komatsu|hitachi|volvo|case|kubota))\b/i.test(
     clean(text),
   )
 }
@@ -568,7 +568,8 @@ const TOPIC_CHIPS: Record<Topic, string[]> = {
   scan: ['Looks normal', 'Looks low / high', "Can't get a reading", 'Not sure'],
   pressure: ['At / near spec', 'Low / below spec', "Can't get a reading", 'Not sure'],
   yesno: ['Yes', 'No', "Not sure"],
-  check: ['Yes', 'No', 'Not sure', "I'll type it"],
+  // Actionable check fallback — findings, not bare Yes/No
+  check: ['Looks normal', 'Looks wrong / off', "Can't check yet", 'Not sure', "I'll type it"],
 }
 
 /** Short stock questions only when we can name the thing being checked. */
@@ -1150,15 +1151,26 @@ function fallbackChipsForOpenAsk(ask: string, contextExtra = ''): string[] {
   }
 
   if (kind === 'check') {
+    // Prefer findings scraped from the ask ("scored or clean", "wet/dry")
+    const fromChoices = chipsFromAskChoices(ask)
+    if (fromChoices) return [...fromChoices, 'Not sure', "I'll type it"].filter(
+      (c, i, a) => a.findIndex((x) => x.toLowerCase() === c.toLowerCase()) === i,
+    )
     return ['Looks normal', 'Looks wrong / off', "Can't check yet", 'Not sure', "I'll type it"]
   }
 
   if (kind === 'yesno') {
-    return ['Yes', 'No', 'Partly / sometimes', 'Not sure', "I'll type it"]
+    return labeledBinaryChips(ask) ?? ['Yes', 'No', 'Partly / sometimes', 'Not sure', "I'll type it"]
   }
 
-  // Open ask with no clear pattern — keep taps useful but neutral
-  return ['Yes', 'No', 'Not sure', "I'll type it"]
+  // Open ask — still avoid lone Yes/No when we can name findings
+  const openChoices = chipsFromAskChoices(ask)
+  if (openChoices) {
+    return [...openChoices, 'Not sure', "I'll type it"].filter(
+      (c, i, a) => a.findIndex((x) => x.toLowerCase() === c.toLowerCase()) === i,
+    )
+  }
+  return ['Looks normal', 'Looks wrong / off', 'Not sure', "I'll type it"]
 }
 
 function isTypeOnlyChipSet(labels: string[]): boolean {
@@ -1374,7 +1386,15 @@ function classifyAsk(ask: string): AskKind {
   if (/\bwhich (function|circuit|end|cylinder|boom|bucket|stick|arm|hydraulics)\b/.test(t)) {
     return 'which'
   }
-  if (/\b(pressure|gauge|test port|psi|what do you get)\b/.test(t)) return 'pressure'
+  // Voltage / ohms BEFORE pressure — "what do you get?" is shared wording
+  if (/\b(volt|voltage|12\s*v)\b/.test(t)) return 'check'
+  if (/\b(ohm|ohms|resistance)\b/.test(t)) return 'check'
+  if (
+    /\b(pressure|test port|psi|deadhead|relief pressure|charge pressure)\b/.test(t) ||
+    (/\bgauge\b/.test(t) && /\b(pressure|port|hydraulic|psi)\b/.test(t))
+  ) {
+    return 'pressure'
+  }
   if (/\b(sight glass|fluid level|oil level|between the marks|foam)\b/.test(t)) return 'level'
   if (/\b(how long|when (did|it) start|been happening)\b/.test(t)) return 'duration'
   if (/\b(cold|warm|hot)\b/.test(t) && /\b(worse|when|rough)\b/.test(t)) return 'when'
@@ -1410,10 +1430,22 @@ function classifyChipSet(labels: string[]): AskKind | 'mixed' {
   if (/\b(worse when cold|worse when warm|same either way)\b/.test(joined)) bump('when', 3)
   if (/\b(at idle|under load|both)\b/.test(joined) && !/\brough\b/.test(joined)) bump('load', 2)
   if (/\b(rattle|knocking|matches engine|only with hydraulics)\b/.test(joined)) bump('feel', 3)
-  if (/\b(looks normal|looks wrong|can'?t check|dry \/ no leak|seeping|active drip)\b/.test(joined)) {
+  if (
+    /\b(looks normal|looks wrong|can'?t check|dry \/ no leak|seeping|active drip|got voltage|no voltage|reading ok|reading bad|can'?t measure|has power|no power)\b/.test(
+      joined,
+    )
+  ) {
     bump('check', 3)
   }
-  if (/\b(yes|no|drifts|holds|partly)\b/.test(joined)) bump('yesno', 2)
+  // Standalone Yes/No chips only — don't treat "No voltage" as yesno
+  {
+    const keys = labels.map((l) => clean(l).toLowerCase())
+    const yesNoish = keys.filter((k) =>
+      /^(yes|no|yes —.*|no —.*|partly|partly \/ sometimes|drifts|holds|holds \/ no drift)$/i.test(k),
+    )
+    if (yesNoish.length >= 2) bump('yesno', 2)
+    else if (yesNoish.length === 1 && keys.length <= 3) bump('yesno', 2)
+  }
   if (/\b(just started|been a while|getting worse)\b/.test(joined)) bump('duration', 3)
   if (/\b(john deere|cat|komatsu)\b/.test(joined)) bump('make', 3)
 
@@ -1441,32 +1473,48 @@ function chipsMatchAsk(ask: string, labels: string[]): boolean {
     return true
   }
   if (askKind === 'yesno' && chipKind === 'check') return true
-  if (askKind === 'where' && chipKind === 'which') return true
   if (askKind === 'when' && chipKind === 'load') return true
   if (askKind === 'feel' && chipKind === 'load') return true
 
-  // Hard mismatches
+  // Hard mismatches — chips that answer a different fork than the Next Step
   const hard: Array<[AskKind, AskKind]> = [
     ['where', 'symptom'],
     ['where', 'feel'],
     ['where', 'pressure'],
     ['where', 'yesno'],
+    ['where', 'level'],
+    ['where', 'which'],
     ['which', 'symptom'],
     ['which', 'yesno'],
+    ['which', 'where'],
     ['pressure', 'symptom'],
     ['pressure', 'where'],
     ['pressure', 'yesno'],
+    ['pressure', 'feel'],
+    ['pressure', 'check'],
     ['level', 'symptom'],
+    ['level', 'where'],
+    ['level', 'feel'],
     ['symptom', 'where'],
     ['symptom', 'pressure'],
+    ['symptom', 'check'],
+    ['symptom', 'level'],
     ['yesno', 'symptom'],
     ['yesno', 'where'],
+    ['yesno', 'pressure'],
     ['duration', 'symptom'],
     ['make', 'symptom'],
+    ['make', 'check'],
     ['feel', 'symptom'],
     ['feel', 'where'],
+    ['feel', 'pressure'],
     ['check', 'symptom'],
     ['check', 'make'],
+    ['check', 'feel'],
+    ['check', 'duration'],
+    ['check', 'pressure'],
+    ['load', 'symptom'],
+    ['load', 'where'],
   ]
   return !hard.some(([a, c]) => askKind === a && chipKind === c)
 }
@@ -1524,10 +1572,10 @@ function pickQuestionAndChips(
     return { question, chips: fallback }
   }
 
-  // Absolute last resort — still not a lone "I'll type it"
+  // Absolute last resort — finding-style, not a lone "I'll type it"
   return {
     question,
-    chips: ['Yes', 'No', 'Not sure', "I'll type it"],
+    chips: ['Looks normal', 'Looks wrong / off', 'Not sure', "I'll type it"],
   }
 }
 

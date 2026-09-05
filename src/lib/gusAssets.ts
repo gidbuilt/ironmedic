@@ -1,5 +1,5 @@
 /** Bump when replacing logo files so browsers don't keep the old cached PNGs. */
-export const GUS_ASSET_VERSION = '45'
+export const GUS_ASSET_VERSION = '46'
 
 /** Same art as the home-screen / App Store icon — used for Gus chat chips */
 export const GUS_AVATAR_URL = `/icons/app-icon-1024.png?v=${GUS_ASSET_VERSION}`
