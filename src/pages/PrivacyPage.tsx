@@ -63,9 +63,10 @@ export function PrivacyPage() {
 
           <h2 className="pt-2 text-base font-semibold text-steel-100">Payments</h2>
           <p>
-            Paid subscriptions are processed by Stripe. We store your Stripe customer id and
-            subscription status on your profile so we can unlock paid features. We do not store full
-            card numbers on IronMedic servers.
+            Paid subscriptions on the website are processed by Stripe. On the iOS app, subscriptions
+            are processed by Apple (In-App Purchase). We store a Stripe customer id and/or an App
+            Store transaction id plus subscription status on your profile so we can unlock paid
+            features. We do not store full card numbers on IronMedic servers.
           </p>
 
           <h2 className="pt-2 text-base font-semibold text-steel-100">Contact</h2>

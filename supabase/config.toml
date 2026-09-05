@@ -17,3 +17,8 @@ verify_jwt = false
 
 [functions.stripe-cancel-subscriptions]
 verify_jwt = false
+
+# App Store Server Notifications V2 do not send a Supabase JWT.
+# The function verifies Apple's signedPayload (x5c → Apple Root CA G3).
+[functions.apple-webhook]
+verify_jwt = false

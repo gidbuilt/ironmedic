@@ -2,6 +2,7 @@ import { handleCors, jsonResponse } from '../_shared/cors.ts'
 import { validateStripePriceForTier } from '../_shared/stripePlans.ts'
 import { createServiceClient, createUserClient, getAuthedUser } from '../_shared/supabaseClients.ts'
 import { tierLabel, tierRank, type SubscriptionTier } from '../_shared/subscription.ts'
+import type { PaidTier } from '../_shared/stripePlans.ts'
 
 const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY') ?? ''
 const STRIPE_PRICE_BASIC = Deno.env.get('STRIPE_PRICE_BASIC') ?? ''
@@ -15,7 +16,7 @@ function priceForTier(tier: SubscriptionTier): string {
   return STRIPE_PRICE_BASIC
 }
 
-function parseTier(value: unknown): SubscriptionTier | null {
+function parseTier(value: unknown): PaidTier | null {
   if (value === 'basic' || value === 'pro' || value === 'premium') return value
   return null
 }
@@ -72,7 +73,7 @@ Deno.serve(async (req: Request) => {
 
   let success_url = ''
   let cancel_url = ''
-  let tier: SubscriptionTier | null = null
+  let tier: PaidTier | null = null
   try {
     const body = await req.json()
     success_url = String(body.success_url ?? '')
@@ -91,11 +92,20 @@ Deno.serve(async (req: Request) => {
   const service = createServiceClient()
   const { data: profile } = await service
     .from('profiles')
-    .select('stripe_customer_id, subscription_tier')
+    .select('stripe_customer_id, subscription_tier, billing_provider')
     .eq('id', user.id)
     .maybeSingle()
 
   const currentTier = (profile?.subscription_tier ?? 'free') as SubscriptionTier
+  if (profile?.billing_provider === 'apple' && currentTier !== 'free') {
+    return jsonResponse(
+      {
+        error: 'apple_subscription_active',
+        message: 'This account is billed through the App Store. Manage or change plans in iOS Settings → Apple ID → Subscriptions.',
+      },
+      400,
+    )
+  }
   if (currentTier === tier) {
     return jsonResponse(
       { error: 'already_subscribed', message: `You are already on ${tierLabel(tier)}.` },
@@ -180,7 +190,7 @@ Deno.serve(async (req: Request) => {
 
     await service
       .from('profiles')
-      .update({ subscription_tier: tier, is_subscribed: true })
+      .update({ subscription_tier: tier, is_subscribed: true, billing_provider: 'stripe' })
       .eq('id', user.id)
 
     return jsonResponse({ url: success_url, upgraded: true })

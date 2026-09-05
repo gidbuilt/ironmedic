@@ -71,13 +71,14 @@ export async function fetchProfile(): Promise<{
   is_subscribed: boolean
   subscription_tier: SubscriptionTier
   stripe_customer_id: string | null
+  billing_provider: 'stripe' | 'apple' | null
 } | null> {
   const { data: sessionData } = await supabase.auth.getSession()
   const userId = sessionData.session?.user?.id
   if (!userId) return null
   const { data, error } = await supabase
     .from('profiles')
-    .select('is_subscribed, subscription_tier, stripe_customer_id')
+    .select('is_subscribed, subscription_tier, stripe_customer_id, billing_provider')
     .eq('id', userId)
     .maybeSingle()
   if (error) throw new Error(error.message)
@@ -85,5 +86,6 @@ export async function fetchProfile(): Promise<{
     is_subscribed: boolean
     subscription_tier: SubscriptionTier
     stripe_customer_id: string | null
+    billing_provider: 'stripe' | 'apple' | null
   } | null
 }

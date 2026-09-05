@@ -7,10 +7,12 @@ import { StatusBar, Style } from '@capacitor/status-bar'
 import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './context/AuthContext'
+import { initAppleIapListeners } from './lib/appleIap'
 import { initNativeKeyboard } from './lib/nativeKeyboard'
 
 async function initNativeChrome() {
   await initNativeKeyboard()
+  void initAppleIapListeners()
   if (!Capacitor.isNativePlatform()) return
   try {
     await StatusBar.setStyle({ style: Style.Dark })
