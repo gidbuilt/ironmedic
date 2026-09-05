@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabase'
 import { openBillingPortal } from '../lib/billing'
 import { openExternalUrl } from '../lib/openExternalUrl'
 import { BASIC_MONTHLY_MESSAGE_LIMIT } from '../lib/plans'
+import { isNativeIos } from '../lib/platform'
+import { manageAppleSubscriptions, restoreApplePurchases } from '../lib/appleIap'
 import { tierLabel } from '../lib/subscription'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
@@ -20,7 +22,10 @@ export function AccountPage() {
   const [params] = useSearchParams()
   const [busy, setBusy] = useState(false)
   const [billingBusy, setBillingBusy] = useState(false)
+  const [restoreBusy, setRestoreBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const iosBilling = isNativeIos()
+  const billedByApple = profile?.billing_provider === 'apple'
   const [upgradeEmail, setUpgradeEmail] = useState('')
   const [upgradePassword, setUpgradePassword] = useState('')
   const [upgradeMsg, setUpgradeMsg] = useState<string | null>(null)
@@ -90,12 +95,30 @@ export function AccountPage() {
     setBillingBusy(true)
     setError(null)
     try {
+      if (iosBilling && billedByApple) {
+        await manageAppleSubscriptions()
+        setBillingBusy(false)
+        return
+      }
       const url = await openBillingPortal()
       await openExternalUrl(url)
       setBillingBusy(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not open billing portal.')
       setBillingBusy(false)
+    }
+  }
+
+  async function handleRestore() {
+    setRestoreBusy(true)
+    setError(null)
+    try {
+      await restoreApplePurchases()
+      await refreshProfile()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not restore purchases.')
+    } finally {
+      setRestoreBusy(false)
     }
   }
 
@@ -157,14 +180,24 @@ export function AccountPage() {
                 </Button>
               </Link>
             )}
-            {isSubscribed && user && profile?.stripe_customer_id && (
+            {isSubscribed && user && (billedByApple || profile?.stripe_customer_id) && (
               <Button
                 variant="secondary"
                 size="sm"
-                disabled={billingBusy}
+                disabled={billingBusy || restoreBusy}
                 onClick={() => void handleBilling()}
               >
-                {billingBusy ? 'Opening…' : 'Manage billing'}
+                {billingBusy ? 'Opening…' : billedByApple ? 'Manage App Store subscription' : 'Manage billing'}
+              </Button>
+            )}
+            {iosBilling && !isAnonymous && (
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={billingBusy || restoreBusy}
+                onClick={() => void handleRestore()}
+              >
+                {restoreBusy ? 'Restoring…' : 'Restore purchases'}
               </Button>
             )}
           </div>
@@ -174,8 +207,8 @@ export function AccountPage() {
           <form onSubmit={handleUpgradeGuest} className="space-y-3 border-t border-steel-800/80 pt-5">
             <p className="text-sm font-semibold text-steel-100">Save this account</p>
             <p className="text-sm leading-relaxed text-steel-500">
-              Add email and password so your machines and chats stay with you — required before paid
-              checkout.
+              Add email and password so your machines and chats stay with you — required before a
+              paid trial.
             </p>
             <Input
               label="Email"

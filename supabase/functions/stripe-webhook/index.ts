@@ -38,11 +38,20 @@ async function verifyStripeSignature(
 
 async function setSubscriptionTier(userId: string, customerId: string | null, tier: SubscriptionTier) {
   const service = createServiceClient()
+  const { data: profile } = await service
+    .from('profiles')
+    .select('billing_provider')
+    .eq('id', userId)
+    .maybeSingle()
+  // Do not let a stale Stripe customer overwrite an App Store subscription.
+  if (profile?.billing_provider === 'apple' && tier === 'free') return
+
   const patch: Record<string, unknown> = {
     subscription_tier: tier,
     is_subscribed: tier !== 'free',
   }
   if (customerId) patch.stripe_customer_id = customerId
+  if (tier !== 'free') patch.billing_provider = 'stripe'
   await service.from('profiles').update(patch).eq('id', userId)
 }
 

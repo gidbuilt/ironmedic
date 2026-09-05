@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { TRIAL_DAYS } from '../lib/plans'
+import { isNativeIos } from '../lib/platform'
 import { Button } from './ui/Button'
 
 type TrialPromptProps = {
@@ -11,6 +12,7 @@ type TrialPromptProps = {
 /** Shown when chat requires an active subscription or trial. */
 export function TrialPrompt({ className = '', compact = false }: TrialPromptProps) {
   const { isAnonymous } = useAuth()
+  const iosBilling = isNativeIos()
 
   return (
     <div
@@ -23,8 +25,12 @@ export function TrialPrompt({ className = '', compact = false }: TrialPromptProp
       </p>
       <p className={`mt-1.5 leading-relaxed text-steel-400 ${compact ? 'text-xs' : 'text-sm'}`}>
         {isAnonymous
-          ? 'Create an account, add a card, and try Gus on real shop problems.'
-          : 'Add a card to unlock Gus — cancel anytime before your trial ends.'}
+          ? iosBilling
+            ? 'Create an account, then subscribe with your Apple ID to try Gus on real shop problems.'
+            : 'Create an account, add a card, and try Gus on real shop problems.'
+          : iosBilling
+            ? 'Subscribe with your Apple ID to unlock Gus — cancel anytime before your trial ends.'
+            : 'Add a card to unlock Gus — cancel anytime before your trial ends.'}
       </p>
       <Link to={isAnonymous ? '/signup?next=/pricing' : '/pricing'} className="mt-4 inline-block">
         <Button size={compact ? 'sm' : 'md'}>{isAnonymous ? 'Create account' : 'Start free trial'}</Button>

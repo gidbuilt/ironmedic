@@ -144,6 +144,8 @@ export type CasePrecedent = {
   created_at: string
 }
 
+export type BillingProvider = 'stripe' | 'apple'
+
 export type Profile = {
   id: string
   is_subscribed: boolean
@@ -151,6 +153,8 @@ export type Profile = {
   comp_tier: 'basic' | 'pro' | 'premium' | null
   comp_expires_at: string | null
   stripe_customer_id: string | null
+  apple_original_transaction_id: string | null
+  billing_provider: BillingProvider | null
   gus_messages_used: number
   gus_messages_period_start: string
   created_at: string

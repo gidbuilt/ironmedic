@@ -39,7 +39,9 @@ export function SupportPage() {
             </li>
             <li>
               <strong className="font-medium text-steel-200">Plans &amp; billing:</strong> Basic, Pro, and
-              Premium include a 7-day free trial (card required). See Pricing in the app menu.
+              Premium include a 7-day free trial. On iPhone, subscribe through the App Store; on the
+              web, checkout is via Stripe. See Pricing in the app menu. Use Restore purchases on iOS
+              if you reinstall or switch devices.
             </li>
             <li>
               <strong className="font-medium text-steel-200">Delete my data:</strong> Account → Delete my

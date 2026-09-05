@@ -19,7 +19,7 @@ interface AuthContextValue {
   isSubscribed: boolean
   subscriptionTier: SubscriptionTier
   isPremium: boolean
-  /** True when access comes from comp_tier, not Stripe. */
+  /** True when access comes from comp_tier, not a paid Stripe/App Store subscription. */
   isComplimentary: boolean
   /** Set when anonymous bootstrap failed (e.g. provider disabled in Supabase). */
   authError: string | null
@@ -75,7 +75,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const { data } = await supabase
       .from('profiles')
-      .select('id, is_subscribed, subscription_tier, comp_tier, comp_expires_at, stripe_customer_id, created_at')
+      .select(
+        'id, is_subscribed, subscription_tier, comp_tier, comp_expires_at, stripe_customer_id, apple_original_transaction_id, billing_provider, created_at',
+      )
       .eq('id', userId)
       .maybeSingle()
     setProfile((data as Profile | null) ?? null)
