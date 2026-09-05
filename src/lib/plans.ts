@@ -58,11 +58,10 @@ export const PLANS: Plan[] = [
     name: 'Premium',
     priceLabel: '$39',
     priceDetail: 'CAD / month',
-    description: 'Unlimited text plus photo diagnosis when you need Gus to see the problem.',
+    description: 'Unlimited text plus photo analysis when you need Gus to see the problem.',
     features: [
       'Everything in Pro',
-      'Photo attachments in chat',
-      'Vision-grade model for photo turns',
+      'Photo upload — vision model for photo analysis',
     ],
     cta: 'Start 7-day free trial',
   },
