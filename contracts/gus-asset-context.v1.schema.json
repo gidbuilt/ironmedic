@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "Gus asset advisory request",
+  "description": "Snapshot a calling app passes when asking Gus about one already-authorized machine or vehicle. The TypeScript parser in supabase/functions/_shared/assetContext.ts is the authority: it also rejects impossible calendar dates, more than two decimal places, mileage without a unit, a unit with no mileage, control characters, and the asset-context fence markers. This schema does not grant access to IronMedic records and does not accept OEM specifications or service schedules.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "question", "asset", "recorded_maintenance", "reported_problems"],
+  "properties": {
+    "contract_version": { "const": "1" },
+    "caller_reference": {
+      "description": "Opaque correlation id for the caller. Never sent to the model and never used as a database lookup.",
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[A-Za-z0-9._:-]+$"
+        },
+        { "type": "null" }
+      ]
+    },
+    "question": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1500
+    },
+    "asset": { "$ref": "#/definitions/asset" },
+    "recorded_maintenance": {
+      "type": "array",
+      "maxItems": 25,
+      "items": { "$ref": "#/definitions/maintenance" }
+    },
+    "reported_problems": {
+      "type": "array",
+      "maxItems": 25,
+      "items": { "$ref": "#/definitions/problem" }
+    }
+  },
+  "definitions": {
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "display_name", "make", "model", "hours", "mileage", "mileage_unit"],
+      "properties": {
+        "kind": { "enum": ["machine", "vehicle"] },
+        "display_name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "make": { "anyOf": [{ "type": "string", "minLength": 1, "maxLength": 60 }, { "type": "null" }] },
+        "model": { "anyOf": [{ "type": "string", "minLength": 1, "maxLength": 60 }, { "type": "null" }] },
+        "hours": { "$ref": "#/definitions/metric" },
+        "mileage": { "$ref": "#/definitions/metric" },
+        "mileage_unit": {
+          "description": "Required when asset.mileage or any recorded_maintenance.mileage is non-null. Must be null when no mileage is present. One unit applies to every mileage number in the snapshot.",
+          "anyOf": [{ "enum": ["km", "mi"] }, { "type": "null" }]
+        }
+      }
+    },
+    "maintenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["performed_on", "summary", "hours", "mileage"],
+      "properties": {
+        "performed_on": { "$ref": "#/definitions/date" },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 400 },
+        "hours": { "$ref": "#/definitions/metric" },
+        "mileage": { "$ref": "#/definitions/metric" }
+      }
+    },
+    "problem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reported_on", "summary", "status"],
+      "properties": {
+        "reported_on": { "$ref": "#/definitions/date" },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 400 },
+        "status": { "enum": ["open", "resolved", "unknown"] }
+      }
+    },
+    "metric": {
+      "anyOf": [
+        { "type": "number", "minimum": 0, "maximum": 10000000 },
+        { "type": "null" }
+      ]
+    },
+    "date": {
+      "anyOf": [
+        { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        { "type": "null" }
+      ]
+    }
+  }
+}
